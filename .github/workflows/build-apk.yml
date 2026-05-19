@@ -9,6 +9,8 @@ jobs:
   build:
     name: Build & Release APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # nécessaire pour créer des GitHub Releases
 
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────
