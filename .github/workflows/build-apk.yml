@@ -36,18 +36,29 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # ── 5. Build Release APK ───────────────────────────────────────
-      - name: Build Release APK (signed with debug key)
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+      # ── 5. Générer le debug keystore (requis pour signer l'APK) ───
+      - name: Generate debug keystore
+        run: |
+          mkdir -p $HOME/.android
+          keytool -genkeypair -v \
+            -keystore $HOME/.android/debug.keystore \
+            -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
 
-      # ── 6. Renommer l'APK ─────────────────────────────────────────
+      # ── 6. Build Release APK ───────────────────────────────────────
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --no-daemon
+
+      # ── 7. Renommer l'APK ─────────────────────────────────────────
       - name: Rename APK
         run: |
           mkdir -p output
           cp app/build/outputs/apk/release/app-release.apk output/GoogleTVPerso.apk
           ls -lh output/
 
-      # ── 7. Upload artifact (toujours disponible) ───────────────────
+      # ── 8. Upload artifact (toujours disponible) ───────────────────
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -55,7 +66,7 @@ jobs:
           path: output/GoogleTVPerso.apk
           retention-days: 90
 
-      # ── 8. Créer une Release GitHub avec l'APK en téléchargement ──
+      # ── 9. Créer une Release GitHub avec l'APK en téléchargement ──
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
