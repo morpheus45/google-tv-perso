@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Banner Android TV affiché sur l'écran d'accueil du launcher (320x180dp) -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fond bleu Google TV -->
+    <item>
+        <shape>
+            <solid android:color="#1A1A2E" />
+        </shape>
+    </item>
+    <!-- Dégradé bleu accent -->
+    <item>
+        <shape>
+            <gradient
+                android:startColor="#0D47A1"
+                android:endColor="#1A1A2E"
+                android:angle="0"
+                android:type="linear" />
+        </shape>
+    </item>
+    <!-- Texte : impossible en XML drawable, le texte est dans le nom de l'app -->
+</layer-list>

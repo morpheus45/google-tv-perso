@@ -1,0 +1,2 @@
+-keep class org.videolan.libvlc.** { *; }
+-keepattributes *Annotation*

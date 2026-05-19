@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Autoriser HTTP pour goldenlink.live (pas de HTTPS sur ce serveur IPTV) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">goldenlink.live</domain>
+    </domain-config>
+    <!-- GitHub Pages en HTTPS -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">morpheus45.github.io</domain>
+    </domain-config>
+    <!-- Tout le reste : autoriser HTTP pour compatibilité IPTV -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

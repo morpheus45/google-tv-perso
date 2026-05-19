@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Google TV Perso</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0F0F0F;
+  --surface:#1A1A1A;
+  --card:#1E1E1E;
+  --text:#FFFFFF;
+  --dim:#AAAAAA;
+  --accent:#4285F4;
+  --accent-light:#8AB4F8;
+  --red:#EA4335;
+  --sw:72px;    /* sidebar width closed */
+  --so:240px;   /* sidebar width open */
+  --ease:.25s ease;
+}
+
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
+  font-family:'Google Sans','Roboto','Noto Sans',system-ui,sans-serif;
+  overflow:hidden;user-select:none;-webkit-user-select:none}
+
+/* ─── APP SHELL ──────────────────────────────────────────────────── */
+#app{display:flex;width:100vw;height:100vh;overflow:hidden;position:relative}
+
+/* ─── SIDEBAR ────────────────────────────────────────────────────── */
+#sb{
+  width:var(--sw);height:100%;background:transparent;
+  display:flex;flex-direction:column;align-items:flex-start;
+  padding:28px 0;transition:width var(--ease),background var(--ease);
+  flex-shrink:0;z-index:10;position:relative;overflow:hidden
+}
+#sb.open{width:var(--so);background:rgba(18,18,18,.97)}
+
+.sb-logo{
+  display:flex;align-items:center;padding:0 20px;
+  margin-bottom:36px;height:36px;white-space:nowrap;overflow:hidden
+}
+.sb-logo svg{width:28px;height:28px;flex-shrink:0}
+.sb-logo span{
+  margin-left:14px;font-size:18px;font-weight:700;color:#fff;
+  opacity:0;transition:opacity var(--ease);white-space:nowrap
+}
+#sb.open .sb-logo span{opacity:1}
+
+.ni{
+  display:flex;align-items:center;width:calc(100% - 8px);
+  padding:14px 20px;cursor:pointer;
+  border-radius:0 28px 28px 0;
+  transition:background var(--ease);outline:none;overflow:hidden;
+  white-space:nowrap;margin-bottom:2px
+}
+.ni .ico{font-size:22px;width:32px;flex-shrink:0;text-align:center}
+.ni .lbl{
+  margin-left:18px;font-size:15px;font-weight:500;
+  opacity:0;transition:opacity var(--ease)
+}
+#sb.open .ni .lbl{opacity:1}
+.ni:hover,.ni.foc{background:rgba(255,255,255,.12)}
+.ni.active{background:rgba(66,133,244,.2);color:var(--accent-light)}
+
+/* ─── MAIN ───────────────────────────────────────────────────────── */
+#main{flex:1;height:100%;overflow:hidden;display:flex;flex-direction:column;position:relative}
+
+/* ─── TOP BAR ────────────────────────────────────────────────────── */
+#topbar{
+  position:absolute;top:0;right:0;left:0;
+  display:flex;align-items:center;padding:22px 40px 0;z-index:5;
+  pointer-events:none
+}
+#topbar .stitle{font-size:20px;font-weight:600;flex:1}
+#clock{font-size:15px;color:var(--dim);font-variant-numeric:tabular-nums}
+
+/* ─── VIEWS ──────────────────────────────────────────────────────── */
+#home-view{display:flex;flex-direction:column;height:100%;overflow:hidden}
+#grid-view{display:none;flex-direction:column;height:100%;padding-top:72px}
+#search-view{display:none;flex-direction:column;height:100%;padding-top:72px}
+#settings-view{display:none;flex-direction:column;height:100%;padding:80px 40px}
+
+/* ─── HERO ───────────────────────────────────────────────────────── */
+#hero{
+  position:relative;width:100%;height:55vh;min-height:280px;
+  overflow:hidden;flex-shrink:0
+}
+.hbg{
+  position:absolute;inset:0;background-size:cover;
+  background-position:center 20%;transition:opacity .9s ease
+}
+.hbg::after{
+  content:'';position:absolute;inset:0;
+  background:
+    linear-gradient(to right,rgba(15,15,15,.92) 0%,rgba(15,15,15,.55) 55%,rgba(15,15,15,.1) 100%),
+    linear-gradient(to top,rgba(15,15,15,1) 0%,transparent 45%)
+}
+.hposter{
+  position:absolute;right:80px;bottom:16px;
+  width:140px;height:210px;border-radius:10px;
+  object-fit:cover;box-shadow:0 8px 40px rgba(0,0,0,.85);
+  display:none
+}
+.hinfo{
+  position:absolute;bottom:36px;left:40px;
+  max-width:52%;z-index:2
+}
+.htitle{
+  font-size:32px;font-weight:700;line-height:1.2;
+  margin-bottom:8px;text-shadow:0 2px 8px rgba(0,0,0,.8)
+}
+.hmeta{font-size:13px;color:var(--dim);margin-bottom:10px}
+.hplot{
+  font-size:14px;line-height:1.55;color:#CCC;max-width:480px;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+  overflow:hidden;margin-bottom:18px
+}
+.hact{display:flex;gap:12px}
+
+/* ─── BUTTONS ────────────────────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:11px 26px;border:none;border-radius:24px;
+  font-size:14px;font-weight:600;cursor:pointer;outline:none;
+  transition:transform .15s,box-shadow .15s
+}
+.btn-w{background:#FFF;color:#000}
+.btn-g{background:rgba(255,255,255,.18);color:#FFF;border:1.5px solid rgba(255,255,255,.35)}
+.btn.foc,.btn:focus{transform:scale(1.05);box-shadow:0 0 0 3px rgba(255,255,255,.7)}
+
+/* ─── CONTENT SCROLL ─────────────────────────────────────────────── */
+#content{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 0 40px;scrollbar-width:none}
+#content::-webkit-scrollbar{display:none}
+
+/* ─── ROW ────────────────────────────────────────────────────────── */
+.row{margin-bottom:28px}
+.row-title{font-size:17px;font-weight:600;padding:0 40px;margin-bottom:10px}
+.row-items{display:flex;gap:12px;padding:6px 40px;overflow-x:auto;scrollbar-width:none}
+.row-items::-webkit-scrollbar{display:none}
+
+/* ─── CARD ───────────────────────────────────────────────────────── */
+.card{
+  flex-shrink:0;width:180px;border-radius:8px;overflow:hidden;
+  cursor:pointer;position:relative;transition:transform .2s,box-shadow .2s;
+  outline:none;background:var(--card)
+}
+.card img{width:100%;height:243px;object-fit:cover;display:block}
+.card.live img{height:101px}  /* 16:9 */
+.cinfo{padding:8px 10px 10px}
+.ctitle{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ccat{font-size:11px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card.foc{transform:scale(1.07);box-shadow:0 0 0 3px #FFF,0 10px 30px rgba(0,0,0,.7);z-index:3}
+
+/* ─── GRID VIEW ──────────────────────────────────────────────────── */
+#grid-wrap{display:flex;flex-wrap:wrap;gap:14px;padding:0 40px 40px;overflow-y:auto;flex:1;scrollbar-width:none}
+#grid-wrap::-webkit-scrollbar{display:none}
+
+/* ─── SEARCH ─────────────────────────────────────────────────────── */
+.search-box{
+  display:flex;align-items:center;
+  background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.2);
+  border-radius:40px;padding:12px 22px;margin:0 40px 24px;max-width:600px
+}
+.search-box.foc{border-color:#FFF;background:rgba(255,255,255,.15)}
+#sinput{
+  background:none;border:none;outline:none;color:#FFF;
+  font-size:18px;flex:1
+}
+#sinput::placeholder{color:var(--dim)}
+#sresults{display:flex;flex-wrap:wrap;gap:14px;padding:0 40px;overflow-y:auto;flex:1;scrollbar-width:none}
+#sresults::-webkit-scrollbar{display:none}
+
+/* ─── SETTINGS ───────────────────────────────────────────────────── */
+.settings-title{font-size:26px;font-weight:700;margin-bottom:32px}
+.setting-row{
+  display:flex;align-items:center;padding:16px 20px;
+  border-radius:12px;cursor:pointer;transition:background .15s;outline:none
+}
+.setting-row.foc{background:rgba(255,255,255,.1)}
+.setting-label{flex:1;font-size:16px}
+.setting-value{font-size:14px;color:var(--dim)}
+
+/* ─── DETAIL OVERLAY ─────────────────────────────────────────────── */
+#det{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.88);z-index:50;
+  align-items:center;justify-content:center
+}
+#det.on{display:flex}
+.det-card{
+  background:#1C1C1C;border-radius:16px;width:640px;max-height:82vh;
+  overflow-y:auto;padding:32px;scrollbar-width:thin;
+  scrollbar-color:rgba(255,255,255,.2) transparent
+}
+#det-img{width:100%;height:220px;object-fit:cover;border-radius:10px;margin-bottom:20px}
+#det-title{font-size:24px;font-weight:700;margin-bottom:6px}
+#det-meta{color:var(--dim);font-size:13px;margin-bottom:10px}
+#det-plot{font-size:14px;line-height:1.6;color:#CCC;margin-bottom:20px}
+#det-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.ephead{font-size:13px;color:var(--dim);padding:10px 0 4px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.ep{
+  padding:12px 14px;border-radius:8px;cursor:pointer;
+  font-size:14px;transition:background .15s;outline:none
+}
+.ep.foc,.ep:hover{background:rgba(255,255,255,.1)}
+
+/* ─── LOADING ────────────────────────────────────────────────────── */
+#loading{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;z-index:100;gap:22px
+}
+.spin{
+  width:48px;height:48px;border:4px solid rgba(255,255,255,.1);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:sp .8s linear infinite
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+#loading p{font-size:15px;color:var(--dim)}
+
+/* ─── FOCUS RING ON HOME BUTTONS ──── (extra visibility) ────────── */
+#btn-play.foc{box-shadow:0 0 0 3px #FFF,0 0 20px rgba(255,255,255,.3)}
+#btn-info.foc{box-shadow:0 0 0 3px rgba(255,255,255,.7)}
+</style>
+</head>
+<body>
+
+<!-- ── LOADING ──────────────────────────────────────────────────── -->
+<div id="loading">
+  <div class="spin"></div>
+  <p>Chargement de Google TV Perso…</p>
+</div>
+
+<!-- ── APP ──────────────────────────────────────────────────────── -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <nav id="sb">
+    <div class="sb-logo">
+      <!-- Google TV logo simplifié -->
+      <svg viewBox="0 0 28 28" fill="none">
+        <rect x="2" y="6" width="24" height="16" rx="3" fill="#4285F4"/>
+        <rect x="10" y="22" width="8" height="3" fill="#4285F4"/>
+        <rect x="7" y="24" width="14" height="2" rx="1" fill="#4285F4"/>
+        <path d="M8 13l3.5 3L20 10" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Google TV Perso</span>
+    </div>
+    <div class="ni active" data-s="home">
+      <span class="ico">⌂</span><span class="lbl">Accueil</span>
+    </div>
+    <div class="ni" data-s="search">
+      <span class="ico">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </span>
+      <span class="lbl">Rechercher</span>
+    </div>
+    <div class="ni" data-s="movies">
+      <span class="ico">🎬</span><span class="lbl">Films</span>
+    </div>
+    <div class="ni" data-s="shows">
+      <span class="ico">📺</span><span class="lbl">Séries</span>
+    </div>
+    <div class="ni" data-s="live">
+      <span class="ico">📡</span><span class="lbl">TV en Direct</span>
+    </div>
+    <div class="ni" data-s="settings">
+      <span class="ico">⚙</span><span class="lbl">Paramètres</span>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <div id="main">
+    <!-- Top bar -->
+    <div id="topbar">
+      <span class="stitle" id="stitle">Accueil</span>
+      <span id="clock">--:--</span>
+    </div>
+
+    <!-- HOME VIEW -->
+    <div id="home-view">
+      <div id="hero">
+        <div class="hbg" id="hbg"></div>
+        <img class="hposter" id="hposter" src="" alt="">
+        <div class="hinfo">
+          <div class="htitle" id="htitle">Chargement…</div>
+          <div class="hmeta" id="hmeta"></div>
+          <div class="hplot" id="hplot"></div>
+          <div class="hact">
+            <button class="btn btn-w" id="btn-play">▶ Lecture</button>
+            <button class="btn btn-g" id="btn-info">ℹ Plus d'infos</button>
+          </div>
+        </div>
+      </div>
+      <div id="content"></div>
+    </div>
+
+    <!-- GRID VIEW (Films / Séries / Live) -->
+    <div id="grid-view">
+      <div id="grid-wrap"></div>
+    </div>
+
+    <!-- SEARCH VIEW -->
+    <div id="search-view">
+      <div class="search-box" id="sbox">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0">
+          <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="sinput" placeholder="Rechercher des films, séries…" autocomplete="off">
+      </div>
+      <div id="sresults"></div>
+    </div>
+
+    <!-- SETTINGS VIEW -->
+    <div id="settings-view">
+      <div class="settings-title">Paramètres</div>
+      <div class="setting-row" id="set-reload" tabindex="-1">
+        <span class="setting-label">🔄  Recharger le contenu</span>
+        <span class="setting-value">Actualiser les catalogues</span>
+      </div>
+      <div class="setting-row" id="set-cache" tabindex="-1">
+        <span class="setting-label">🗑  Vider le cache</span>
+        <span class="setting-value">Libérer de la mémoire</span>
+      </div>
+      <div class="setting-row" id="set-about" tabindex="-1">
+        <span class="setting-label">ℹ  À propos</span>
+        <span class="setting-value" id="about-val">Google TV Perso v1.0</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL OVERLAY -->
+<div id="det">
+  <div class="det-card">
+    <img id="det-img" src="" alt="">
+    <div id="det-title"></div>
+    <div id="det-meta"></div>
+    <div id="det-plot"></div>
+    <div id="det-actions"></div>
+    <div id="det-eps"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  CONFIGURATION
+// ═══════════════════════════════════════════════════════════════════
+const GH   = 'https://morpheus45.github.io/VOD/';
+const API  = 'http://goldenlink.live/player_api.php';
+const U    = 'E5G5E39';
+const P    = 'RE88M4E';
+
+// ═══════════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════════
+const S = {
+  sec: 'home',          // section active
+  zone: 'hero',         // 'sb'|'hero'|'row'|'det'|'grid'|'search'|'settings'
+  sbOpen: false,
+  sbIdx: 0,             // sidebar selected item index
+  hBtn: 0,              // hero button 0=play 1=info
+  rowIdx: 0,            // focused row
+  cardIdx: 0,           // focused card in row
+  gridIdx: 0,           // focused card in grid
+  detEpIdx: 0,          // focused episode
+  setIdx: 0,            // settings row
+  rows: [],             // [{title, items, isLive?}]
+  heroItem: null,
+  allItems: [],
+  liveItems: [],
+  detItem: null,
+  detEps: [],
+  heroTimer: null,
+  heroPool: [],
+};
+
+const SB_SECS = ['home','search','movies','shows','live','settings'];
+const SB_LABELS = {home:'Accueil',search:'Rechercher',movies:'Films',shows:'Séries',live:'TV en Direct',settings:'Paramètres'};
+const SET_ROWS = ['set-reload','set-cache','set-about'];
+
+// ═══════════════════════════════════════════════════════════════════
+//  DOM helpers
+// ═══════════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const qAll = sel => document.querySelectorAll(sel);
+
+// ═══════════════════════════════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════════════════════════════
+function tick() {
+  const d = new Date();
+  $('clock').textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+tick(); setInterval(tick, 1000);
+
+// ═══════════════════════════════════════════════════════════════════
+//  FETCH HELPERS
+// ═══════════════════════════════════════════════════════════════════
+function bridgeFetch(url) {
+  return new Promise(resolve => {
+    try {
+      if (window.AndroidBridge?.fetchJson) {
+        const r = AndroidBridge.fetchJson(url);
+        resolve(r ? JSON.parse(r) : null);
+      } else {
+        // Dev browser fallback (may hit CORS but useful for testing)
+        fetch(url.replace(/^http:\/\//,'https://'))
+          .then(r=>r.json()).then(resolve).catch(()=>resolve(null));
+      }
+    } catch(e) { resolve(null); }
+  });
+}
+
+async function loadJSON(url) {
+  try { const r = await fetch(url); return r.ok ? await r.json() : null; }
+  catch(e){ return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  CONTENT LOADING
+// ═══════════════════════════════════════════════════════════════════
+function stripLang(t) { return t.replace(/^(FR|EN|ES|AR|DE|IT|TR)\s*[-–]\s*/i,'').trim(); }
+function cleanCat(c)  { return (c||'').replace(/^(SRS|VOD)\s*\|\s*/i,'').trim(); }
+
+function normalise(item) {
+  if (!item?.title) return null;
+  const url = item.url || '';
+  const sid = item.series_id || (url.match(/series_id=(\d+)/)?.[1]) || null;
+  const vid = item.stream_id  || (url.match(/vod_id=(\d+)/)?.[1])  || null;
+  return {
+    title:     stripLang(item.title),
+    image:     item.image || item.logo || '',
+    category:  cleanCat(item.category),
+    plot:      item.plot || item.description || '',
+    url,
+    series_id: sid,
+    stream_id: vid,
+    isLive:    false,
+  };
+}
+
+function shuffle(a) {
+  const b=[...a];
+  for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}
+  return b;
+}
+
+async function loadContent() {
+  const [vodRaw, seriesRaw, liveRaw] = await Promise.all([
+    loadJSON(GH+'vod_catalog.json'),
+    loadJSON(GH+'series_catalog.json'),
+    bridgeFetch(`${API}?username=${U}&password=${P}&action=get_live_streams`),
+  ]);
+
+  const all = [];
+  const byCat = {};
+
+  function addItem(raw) {
+    const item = normalise(raw);
+    if (!item) return;
+    if (all.find(x=>x.title===item.title)) return; // dedup
+    all.push(item);
+    const cat = item.category || 'Autres';
+    (byCat[cat] = byCat[cat]||[]).push(item);
+  }
+
+  if (Array.isArray(vodRaw))    vodRaw.forEach(addItem);
+  if (Array.isArray(seriesRaw)) seriesRaw.forEach(addItem);
+
+  S.allItems = all;
+
+  // Live channels
+  if (Array.isArray(liveRaw)) {
+    S.liveItems = liveRaw.map(ch=>({
+      title:    ch.name,
+      image:    ch.stream_icon||'',
+      category: ch.category_name||'Live TV',
+      plot:     '',
+      stream_id:ch.stream_id,
+      isLive:   true,
+    }));
+  }
+
+  // Build home rows
+  const rows = [];
+  const pool = all.filter(i=>i.image);
+  S.heroPool = pool;
+
+  // "Pour vous" — random selection
+  if (pool.length) rows.push({title:'Recommandé pour vous',items:shuffle(pool).slice(0,20)});
+
+  // Category rows (top 7 by size)
+  Object.entries(byCat)
+    .sort((a,b)=>b[1].length-a[1].length)
+    .slice(0,7)
+    .filter(([,v])=>v.length>=3)
+    .forEach(([cat,items])=>rows.push({title:cat,items:items.slice(0,25)}));
+
+  // Live row
+  if (S.liveItems.length) {
+    rows.push({title:'TV en Direct',items:S.liveItems.slice(0,30),isLive:true});
+  }
+
+  S.rows = rows;
+  if (S.heroPool.length) setHero(S.heroPool[Math.floor(Math.random()*Math.min(S.heroPool.length,20))]);
+  renderRows(rows);
+
+  // Hero auto-rotate
+  clearInterval(S.heroTimer);
+  S.heroTimer = setInterval(()=>{
+    if (S.zone!=='hero') return;
+    const p=S.heroPool;
+    if (p.length) setHero(p[Math.floor(Math.random()*Math.min(p.length,20))]);
+  }, 9000);
+
+  $('loading').style.display='none';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  HERO
+// ═══════════════════════════════════════════════════════════════════
+function setHero(item) {
+  S.heroItem = item;
+  $('htitle').textContent = item.title;
+  $('hmeta').textContent  = item.category||'';
+  $('hplot').textContent  = item.plot||'';
+  if (item.image) {
+    $('hbg').style.backgroundImage = `url('${item.image}')`;
+    $('hposter').src = item.image;
+    $('hposter').style.display = 'block';
+  } else {
+    $('hbg').style.backgroundImage='';
+    $('hposter').style.display='none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RENDER ROWS
+// ═══════════════════════════════════════════════════════════════════
+function renderRows(rows) {
+  const c=$('content'); c.innerHTML='';
+  rows.forEach((row,ri)=>{
+    const div=document.createElement('div'); div.className='row'; div.dataset.ri=ri;
+    const h=document.createElement('div'); h.className='row-title'; h.textContent=row.title;
+    const wrap=document.createElement('div'); wrap.className='row-items'; wrap.id='ri'+ri;
+    row.items.forEach((item,ci)=>wrap.appendChild(mkCard(item,ri,ci,row.isLive)));
+    div.appendChild(h); div.appendChild(wrap); c.appendChild(div);
+  });
+}
+
+function mkCard(item,ri,ci,isLive) {
+  const c=document.createElement('div');
+  c.className='card'+(isLive?' live':'');
+  c.dataset.ri=ri; c.dataset.ci=ci;
+  const img=document.createElement('img');
+  img.src=item.image||BLANK;
+  img.loading='lazy'; img.alt=item.title;
+  const info=document.createElement('div'); info.className='cinfo';
+  const t=document.createElement('div'); t.className='ctitle'; t.textContent=item.title;
+  const ca=document.createElement('div'); ca.className='ccat'; ca.textContent=item.category||(isLive?'Live':'');
+  info.append(t,ca); c.append(img,info);
+  return c;
+}
+
+const BLANK="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='243'%3E%3Crect fill='%231e1e1e' width='180' height='243'/%3E%3Ctext x='90' y='121' fill='%23444' font-size='48' text-anchor='middle' dy='.35em'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E";
+
+// ═══════════════════════════════════════════════════════════════════
+//  RENDER GRID (for section views)
+// ═══════════════════════════════════════════════════════════════════
+function renderGrid(items,isLive) {
+  const w=$('grid-wrap'); w.innerHTML='';
+  items.forEach((item,i)=>{
+    const c=mkCard(item,-1,i,isLive);
+    c.dataset.gi=i;
+    w.appendChild(c);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  FOCUS MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════
+function clearFoc() { qAll('.foc').forEach(e=>e.classList.remove('foc')); }
+
+function focus() {
+  clearFoc();
+  const z=S.zone;
+
+  if (z==='sb') {
+    qAll('.ni')[S.sbIdx]?.classList.add('foc');
+    return;
+  }
+  if (z==='hero') {
+    [$('btn-play'),$('btn-info')][S.hBtn]?.classList.add('foc');
+    return;
+  }
+  if (z==='row') {
+    const row=document.querySelector(`#ri${S.rowIdx}`);
+    if (row) {
+      const cards=row.querySelectorAll('.card');
+      const c=cards[S.cardIdx];
+      if (c) { c.classList.add('foc'); c.scrollIntoView({inline:'nearest',block:'nearest'}); }
+    }
+    document.querySelector(`.row[data-ri="${S.rowIdx}"]`)?.scrollIntoView({block:'nearest'});
+    return;
+  }
+  if (z==='grid') {
+    const cards=$('grid-wrap').querySelectorAll('.card');
+    const c=cards[S.gridIdx];
+    if (c) { c.classList.add('foc'); c.scrollIntoView({inline:'nearest',block:'nearest'}); }
+    return;
+  }
+  if (z==='det') {
+    const eps=qAll('.ep');
+    const e=eps[S.detEpIdx];
+    if (e) { e.classList.add('foc'); e.scrollIntoView({block:'nearest'}); }
+    return;
+  }
+  if (z==='settings') {
+    $(SET_ROWS[S.setIdx])?.classList.add('foc');
+    return;
+  }
+  if (z==='search') {
+    $('sbox').classList.add('foc');
+    $('sinput').focus();
+    return;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  D-PAD NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+window.addEventListener('tv_up',    ()=>nav('u'));
+window.addEventListener('tv_down',  ()=>nav('d'));
+window.addEventListener('tv_left',  ()=>nav('l'));
+window.addEventListener('tv_right', ()=>nav('r'));
+window.addEventListener('tv_enter', ()=>select());
+window.addEventListener('tv_back',  ()=>back());
+window.addEventListener('tv_menu',  ()=>toggleSidebar());
+
+// Keyboard fallback for PC dev
+document.addEventListener('keydown',e=>{
+  const map={ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r',Enter:'e',Escape:'b',Backspace:'b'};
+  const k=map[e.key];
+  if (!k) return;
+  e.preventDefault();
+  if(k==='e') select(); else if(k==='b') back(); else nav(k);
+});
+
+function nav(dir) {
+  const z=S.zone;
+
+  // ── SIDEBAR ──
+  if (z==='sb') {
+    if (dir==='u') S.sbIdx=Math.max(0,S.sbIdx-1);
+    else if (dir==='d') S.sbIdx=Math.min(SB_SECS.length-1,S.sbIdx+1);
+    else if (dir==='r') { closeSb(); S.zone='hero'; S.hBtn=0; }
+    focus(); return;
+  }
+
+  // ── HERO ──
+  if (z==='hero') {
+    if (dir==='l') { openSb(); S.zone='sb'; }
+    else if (dir==='r') S.hBtn=Math.min(1,S.hBtn+1);
+    else if (dir==='u') S.hBtn=Math.max(0,S.hBtn-1);
+    else if (dir==='d') { S.zone='row'; S.rowIdx=0; S.cardIdx=0; }
+    focus(); return;
+  }
+
+  // ── ROW ──
+  if (z==='row') {
+    const rowEl=document.querySelector(`#ri${S.rowIdx}`);
+    const cnt=rowEl?rowEl.querySelectorAll('.card').length:0;
+    if (dir==='u') {
+      if (S.rowIdx===0) { S.zone='hero'; S.hBtn=0; }
+      else { S.rowIdx--; S.cardIdx=0; }
+    } else if (dir==='d') {
+      if (S.rowIdx<S.rows.length-1) { S.rowIdx++; S.cardIdx=0; }
+    } else if (dir==='l') {
+      if (S.cardIdx>0) S.cardIdx--;
+      else { openSb(); S.zone='sb'; }
+    } else if (dir==='r') {
+      S.cardIdx=Math.min(cnt-1,S.cardIdx+1);
+    }
+    focus(); return;
+  }
+
+  // ── GRID ──
+  if (z==='grid') {
+    const cols=Math.floor(($('grid-wrap').offsetWidth)/194)||5; // ~180+14
+    const cnt=$('grid-wrap').querySelectorAll('.card').length;
+    if (dir==='l') { if (S.gridIdx>0) S.gridIdx--; else { openSb(); S.zone='sb'; } }
+    else if (dir==='r') S.gridIdx=Math.min(cnt-1,S.gridIdx+1);
+    else if (dir==='u') S.gridIdx=Math.max(0,S.gridIdx-cols);
+    else if (dir==='d') S.gridIdx=Math.min(cnt-1,S.gridIdx+cols);
+    focus(); return;
+  }
+
+  // ── DETAIL ──
+  if (z==='det') {
+    const eps=qAll('.ep');
+    if (dir==='u') S.detEpIdx=Math.max(0,S.detEpIdx-1);
+    else if (dir==='d') S.detEpIdx=Math.min(eps.length-1,S.detEpIdx+1);
+    focus(); return;
+  }
+
+  // ── SETTINGS ──
+  if (z==='settings') {
+    if (dir==='u') S.setIdx=Math.max(0,S.setIdx-1);
+    else if (dir==='d') S.setIdx=Math.min(SET_ROWS.length-1,S.setIdx+1);
+    else if (dir==='l') { openSb(); S.zone='sb'; }
+    focus(); return;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SELECT
+// ═══════════════════════════════════════════════════════════════════
+function select() {
+  const z=S.zone;
+  if (z==='sb') { gotoSection(SB_SECS[S.sbIdx]); closeSb(); return; }
+  if (z==='hero') {
+    if (S.hBtn===0 && S.heroItem) playItem(S.heroItem);
+    else if (S.hBtn===1 && S.heroItem) showDetail(S.heroItem);
+    return;
+  }
+  if (z==='row') {
+    const item=S.rows[S.rowIdx]?.items[S.cardIdx];
+    if (item) { item.series_id ? showDetail(item) : playItem(item); }
+    return;
+  }
+  if (z==='grid') {
+    const c=$('grid-wrap').querySelectorAll('.card')[S.gridIdx];
+    if (!c) return;
+    const sec=S.sec;
+    let item;
+    if (sec==='movies') item=S.allItems.filter(i=>!i.series_id&&!i.isLive)[S.gridIdx];
+    else if (sec==='shows') item=S.allItems.filter(i=>i.series_id)[S.gridIdx];
+    else if (sec==='live') item=S.liveItems[S.gridIdx];
+    if (item) { item.series_id ? showDetail(item) : playItem(item); }
+    return;
+  }
+  if (z==='det') {
+    const ep=S.detEps[S.detEpIdx];
+    if (ep) playEp(ep);
+    return;
+  }
+  if (z==='settings') {
+    const r=SET_ROWS[S.setIdx];
+    if (r==='set-reload') { $('loading').style.display='flex'; loadContent(); }
+    else if (r==='set-cache') { if(window.AndroidBridge) AndroidBridge.reloadApp(); else location.reload(); }
+    return;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  BACK
+// ═══════════════════════════════════════════════════════════════════
+function back() {
+  if ($('det').classList.contains('on')) { closeDet(); return; }
+  if (S.sbOpen) { closeSb(); S.zone='hero'; focus(); return; }
+  if (S.zone==='row') { S.zone='hero'; S.hBtn=0; focus(); return; }
+  if (S.zone==='grid'||S.zone==='settings'||S.zone==='search') {
+    gotoSection('home'); return;
+  }
+  // On home hero → do nothing (prevents accidental exit as launcher)
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SIDEBAR OPEN / CLOSE
+// ═══════════════════════════════════════════════════════════════════
+function openSb() { S.sbOpen=true; $('sb').classList.add('open'); }
+function closeSb() { S.sbOpen=false; $('sb').classList.remove('open'); }
+function toggleSidebar() {
+  if (S.sbOpen) { closeSb(); S.zone='hero'; focus(); }
+  else { openSb(); S.zone='sb'; focus(); }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SECTION SWITCH
+// ═══════════════════════════════════════════════════════════════════
+function gotoSection(sec) {
+  S.sec=sec; closeSb();
+
+  // Update sidebar active state
+  qAll('.ni').forEach(el=>el.classList.toggle('active',el.dataset.s===sec));
+  $('stitle').textContent=SB_LABELS[sec]||sec;
+
+  // Hide all views
+  $('home-view').style.display='none';
+  $('grid-view').style.display='none';
+  $('search-view').style.display='none';
+  $('settings-view').style.display='none';
+
+  if (sec==='home') {
+    $('home-view').style.display='flex';
+    S.zone='hero'; S.hBtn=0;
+    focus(); return;
+  }
+  if (sec==='search') {
+    $('search-view').style.display='flex';
+    S.zone='search'; focus(); return;
+  }
+  if (sec==='settings') {
+    $('settings-view').style.display='flex';
+    S.zone='settings'; S.setIdx=0; focus(); return;
+  }
+
+  // Grid sections
+  $('grid-view').style.display='flex';
+  S.zone='grid'; S.gridIdx=0;
+
+  if (sec==='movies') {
+    const items=S.allItems.filter(i=>!i.series_id&&!i.isLive);
+    renderGrid(items,false);
+  } else if (sec==='shows') {
+    const items=S.allItems.filter(i=>i.series_id);
+    renderGrid(items,false);
+  } else if (sec==='live') {
+    renderGrid(S.liveItems,true);
+  }
+  focus();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  PLAY
+// ═══════════════════════════════════════════════════════════════════
+function playItem(item) {
+  if (!item) return;
+  if (item.isLive && item.stream_id) {
+    openVlc(`http://goldenlink.live/live/${U}/${P}/${item.stream_id}.ts`, item.title, true);
+    return;
+  }
+  if (item.stream_id) {
+    openVlc(`http://goldenlink.live/movie/${U}/${P}/${item.stream_id}.mkv`, item.title, false);
+    return;
+  }
+  if (item.series_id) { showDetail(item); return; }
+  // Direct URL fallback
+  if (item.url && !item.url.includes('player_api')) {
+    openVlc(item.url, item.title, false);
+    return;
+  }
+  showDetail(item);
+}
+
+function playEp(ep) {
+  const ext=ep.container_extension||'mkv';
+  openVlc(`http://goldenlink.live/series/${U}/${P}/${ep.id}.${ext}`,
+          `${ep.title||'Épisode '+ep.episode_num}`, false);
+}
+
+function openVlc(url, title, isLive) {
+  if (window.AndroidBridge?.openInVlc) {
+    AndroidBridge.openInVlc(url, title||'', isLive);
+  } else {
+    window.open(url);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  DETAIL OVERLAY
+// ═══════════════════════════════════════════════════════════════════
+async function showDetail(item) {
+  S.detItem=item; S.detEps=[]; S.detEpIdx=0;
+  $('det-img').src  = item.image||'';
+  $('det-title').textContent = item.title;
+  $('det-meta').textContent  = item.category||'';
+  $('det-plot').textContent  = item.plot||'';
+  $('det-actions').innerHTML = '';
+  $('det-eps').innerHTML     = '';
+  $('det').classList.add('on');
+  S.zone='det';
+
+  if (!item.series_id) {
+    const btn=document.createElement('button');
+    btn.className='btn btn-w'; btn.textContent='▶ Lecture';
+    btn.onclick=()=>playItem(item);
+    $('det-actions').appendChild(btn);
+  } else {
+    $('det-eps').innerHTML='<p style="color:var(--dim);padding:8px 0">Chargement des épisodes…</p>';
+    const data=await bridgeFetch(`${API}?username=${U}&password=${P}&action=get_series_info&series_id=${item.series_id}`);
+    if (data?.episodes) {
+      const eps=[];
+      for (const [sn,list] of Object.entries(data.episodes)) {
+        list.forEach(ep=>eps.push({...ep,_s:sn}));
+      }
+      S.detEps=eps;
+      renderEps(eps,data.episodes);
+    } else {
+      $('det-eps').innerHTML='<p style="color:var(--dim)">Aucun épisode disponible.</p>';
+    }
+  }
+  focus();
+}
+
+function renderEps(all,grouped) {
+  const c=$('det-eps'); c.innerHTML='';
+  for (const [s,list] of Object.entries(grouped)) {
+    const h=document.createElement('div'); h.className='ephead';
+    h.textContent=`Saison ${s}`; c.appendChild(h);
+    list.forEach(ep=>{
+      const el=document.createElement('div'); el.className='ep';
+      el.textContent=`Ép. ${ep.episode_num}${ep.title?' — '+ep.title:''}`;
+      const idx=all.indexOf(ep);
+      el.onclick=()=>{ S.detEpIdx=idx; playEp(ep); };
+      c.appendChild(el);
+    });
+  }
+}
+
+function closeDet() {
+  $('det').classList.remove('on');
+  S.zone = S.sec==='home' ? 'row' : 'grid';
+  focus();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SEARCH
+// ═══════════════════════════════════════════════════════════════════
+$('sinput').addEventListener('input',e=>{
+  const q=e.target.value.toLowerCase();
+  const res=S.allItems.concat(S.liveItems)
+    .filter(i=>i.title.toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q))
+    .slice(0,60);
+  const c=$('sresults'); c.innerHTML='';
+  res.forEach((item,i)=>{
+    const card=mkCard(item,-1,i,item.isLive);
+    card.onclick=()=>{ item.series_id?showDetail(item):playItem(item); };
+    c.appendChild(card);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  SETTINGS ACTIONS
+// ═══════════════════════════════════════════════════════════════════
+$('set-reload').onclick=()=>{ $('loading').style.display='flex'; loadContent(); };
+$('set-cache').onclick =()=>{ if(window.AndroidBridge) AndroidBridge.reloadApp(); else location.reload(); };
+
+// ═══════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════
+(async function init() {
+  // Show home view
+  $('home-view').style.display='flex';
+
+  // Set initial focus state
+  S.zone='hero'; S.hBtn=0;
+  focus();
+
+  await loadContent();
+  focus();
+})();
+</script>
+</body>
+</html>
