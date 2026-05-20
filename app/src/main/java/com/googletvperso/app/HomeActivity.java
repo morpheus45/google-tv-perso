@@ -15,6 +15,11 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import androidx.core.content.FileProvider;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import androidx.fragment.app.FragmentActivity;
 
 /**
@@ -290,8 +295,127 @@ public class HomeActivity extends FragmentActivity {
             act.runOnUiThread(() -> act.webView.loadUrl(HomeActivity.HOME_URL));
         }
 
-        /** Version de l'APK */
+        /** Version de l'APK installée */
         @JavascriptInterface
-        public String getApkVersion() { return "1"; }
+        public String getApkVersion() {
+            return String.valueOf(BuildConfig.VERSION_CODE);
+        }
+
+        /** Vérifie les mises à jour GitHub de façon asynchrone.
+         *  Appelle window._onUpdateResult(data) quand terminé. */
+        @JavascriptInterface
+        public void checkUpdateAsync() {
+            new Thread(() -> {
+                java.net.HttpURLConnection conn = null;
+                try {
+                    java.net.URL u = new java.net.URL(
+                        "https://api.github.com/repos/morpheus45/google-tv-perso/releases/latest");
+                    conn = (java.net.HttpURLConnection) u.openConnection();
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(10000);
+                    conn.setRequestProperty("User-Agent", "GoogleTVPerso/" + BuildConfig.VERSION_CODE);
+                    conn.setRequestProperty("Accept", "application/vnd.github.v3+json");
+                    if (conn.getResponseCode() != 200) { dispatchUpdateResult("null"); return; }
+                    java.util.Scanner sc = new java.util.Scanner(conn.getInputStream(), "UTF-8")
+                        .useDelimiter("\\A");
+                    String json = sc.hasNext() ? sc.next() : "";
+                    JSONObject obj = new JSONObject(json);
+                    String tagName = obj.getString("tag_name"); // "v1.0.5"
+                    String[] parts = tagName.replace("v", "").split("\\.");
+                    int latest = Integer.parseInt(parts[parts.length - 1]);
+                    String dlUrl = "";
+                    JSONArray assets = obj.optJSONArray("assets");
+                    if (assets != null && assets.length() > 0) {
+                        dlUrl = assets.getJSONObject(0).getString("browser_download_url");
+                    }
+                    JSONObject result = new JSONObject();
+                    result.put("currentVersion", BuildConfig.VERSION_CODE);
+                    result.put("latestVersion", latest);
+                    result.put("tagName", tagName);
+                    result.put("downloadUrl", dlUrl);
+                    result.put("upToDate", latest <= BuildConfig.VERSION_CODE);
+                    dispatchUpdateResult(result.toString());
+                } catch (Exception e) {
+                    dispatchUpdateResult("null");
+                } finally {
+                    if (conn != null) conn.disconnect();
+                }
+            }).start();
+        }
+
+        /** Télécharge l'APK depuis url et déclenche l'installation système. */
+        @JavascriptInterface
+        public void downloadAndInstall(final String apkUrl) {
+            new Thread(() -> {
+                java.net.HttpURLConnection conn = null;
+                java.io.FileOutputStream fos = null;
+                try {
+                    java.io.File dir = new java.io.File(act.getCacheDir(), "apk");
+                    dir.mkdirs();
+                    java.io.File apkFile = new java.io.File(dir, "GoogleTVPerso-update.apk");
+
+                    java.net.URL u = new java.net.URL(apkUrl);
+                    conn = (java.net.HttpURLConnection) u.openConnection();
+                    conn.setInstanceFollowRedirects(true);
+                    conn.setConnectTimeout(30000);
+                    conn.setReadTimeout(120000);
+                    conn.connect();
+                    int total = conn.getContentLength();
+                    java.io.InputStream is = conn.getInputStream();
+                    fos = new java.io.FileOutputStream(apkFile);
+                    byte[] buf = new byte[8192];
+                    int read, downloaded = 0, lastPct = -1;
+                    while ((read = is.read(buf)) != -1) {
+                        fos.write(buf, 0, read);
+                        downloaded += read;
+                        if (total > 0) {
+                            int pct = (downloaded * 100) / total;
+                            if (pct / 10 != lastPct / 10) {
+                                lastPct = pct;
+                                final int p = pct;
+                                act.runOnUiThread(() ->
+                                    act.webView.evaluateJavascript(
+                                        "window._onDownloadProgress(" + p + ");", null)
+                                );
+                            }
+                        }
+                    }
+                    fos.close(); fos = null;
+                    is.close();
+
+                    final java.io.File apk = apkFile;
+                    act.runOnUiThread(() -> {
+                        try {
+                            Uri uri = FileProvider.getUriForFile(
+                                act, act.getPackageName() + ".fileprovider", apk);
+                            Intent intent = new Intent(Intent.ACTION_VIEW);
+                            intent.setDataAndType(uri, "application/vnd.android.package-archive");
+                            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                          | Intent.FLAG_ACTIVITY_NEW_TASK);
+                            act.startActivity(intent);
+                            act.webView.evaluateJavascript(
+                                "window.dispatchEvent(new CustomEvent('update_install_started'));", null);
+                        } catch (Exception e) {
+                            Toast.makeText(act, "Erreur installation: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                        }
+                    });
+                } catch (Exception e) {
+                    act.runOnUiThread(() ->
+                        Toast.makeText(act, "Erreur téléchargement: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show()
+                    );
+                } finally {
+                    if (conn != null) conn.disconnect();
+                    if (fos != null) { try { fos.close(); } catch (Exception ignored) {} }
+                }
+            }).start();
+        }
+
+        private void dispatchUpdateResult(final String json) {
+            act.runOnUiThread(() ->
+                act.webView.evaluateJavascript("window._onUpdateResult(" + json + ");", null)
+            );
+        }
     }
 }

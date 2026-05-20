@@ -326,9 +326,13 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
         <span class="setting-label">🗑  Vider le cache</span>
         <span class="setting-value">Libérer de la mémoire</span>
       </div>
+      <div class="setting-row" id="set-update" tabindex="-1">
+        <span class="setting-label">⬆  Mise à jour automatique</span>
+        <span class="setting-value" id="update-val">Appuyer pour vérifier</span>
+      </div>
       <div class="setting-row" id="set-about" tabindex="-1">
         <span class="setting-label">ℹ  À propos</span>
-        <span class="setting-value" id="about-val">Google TV Perso v1.0</span>
+        <span class="setting-value" id="about-val">Google TV Perso</span>
       </div>
     </div>
   </div>
@@ -379,11 +383,12 @@ const S = {
   detEps: [],
   heroTimer: null,
   heroPool: [],
+  _updateUrl: null,   // URL de téléchargement si mise à jour disponible
 };
 
 const SB_SECS = ['home','search','movies','shows','live','settings'];
 const SB_LABELS = {home:'Accueil',search:'Rechercher',movies:'Films',shows:'Séries',live:'TV en Direct',settings:'Paramètres'};
-const SET_ROWS = ['set-reload','set-cache','set-about'];
+const SET_ROWS = ['set-reload','set-cache','set-update','set-about'];
 
 // ═══════════════════════════════════════════════════════════════════
 //  DOM helpers
@@ -763,6 +768,15 @@ function select() {
     const r=SET_ROWS[S.setIdx];
     if (r==='set-reload') { $('loading').style.display='flex'; loadContent(); }
     else if (r==='set-cache') { if(window.AndroidBridge) AndroidBridge.reloadApp(); else location.reload(); }
+    else if (r==='set-update') {
+      if (S._updateUrl) {
+        $('update-val').textContent = 'Téléchargement en cours…';
+        AndroidBridge.downloadAndInstall(S._updateUrl);
+      } else {
+        $('update-val').textContent = 'Vérification…';
+        if (window.AndroidBridge?.checkUpdateAsync) AndroidBridge.checkUpdateAsync();
+      }
+    }
     return;
   }
 }
@@ -817,7 +831,14 @@ function gotoSection(sec) {
   }
   if (sec==='settings') {
     $('settings-view').style.display='flex';
-    S.zone='settings'; S.setIdx=0; focus(); return;
+    S.zone='settings'; S.setIdx=0;
+    // Afficher la version et vérifier les mises à jour
+    const ver = window.AndroidBridge?.getApkVersion?.() || '?';
+    $('about-val').textContent = `Google TV Perso v${ver}`;
+    $('update-val').textContent = 'Vérification…';
+    S._updateUrl = null;
+    if (window.AndroidBridge?.checkUpdateAsync) AndroidBridge.checkUpdateAsync();
+    focus(); return;
   }
 
   // Grid sections
@@ -958,6 +979,29 @@ $('sinput').addEventListener('input',e=>{
 // ═══════════════════════════════════════════════════════════════════
 $('set-reload').onclick=()=>{ $('loading').style.display='flex'; loadContent(); };
 $('set-cache').onclick =()=>{ if(window.AndroidBridge) AndroidBridge.reloadApp(); else location.reload(); };
+$('set-update').onclick=()=>{
+  if (S._updateUrl) { $('update-val').textContent='Téléchargement en cours…'; AndroidBridge.downloadAndInstall(S._updateUrl); }
+  else { $('update-val').textContent='Vérification…'; if(window.AndroidBridge?.checkUpdateAsync) AndroidBridge.checkUpdateAsync(); }
+};
+
+// ── Callbacks de mise à jour (appelés par le bridge Java) ──────────
+window._onUpdateResult = function(data) {
+  if (!data) { $('update-val').textContent='Erreur de connexion'; S._updateUrl=null; return; }
+  if (data.upToDate) {
+    $('update-val').textContent=`✓ À jour (v${data.currentVersion})`;
+    S._updateUrl=null;
+  } else {
+    $('update-val').textContent=`⬆ Installer v${data.latestVersion} — Appuyer pour télécharger`;
+    S._updateUrl=data.downloadUrl;
+  }
+};
+window._onDownloadProgress = function(pct) {
+  $('update-val').textContent=`Téléchargement : ${pct}%`;
+};
+window.addEventListener('update_install_started', ()=>{
+  $('update-val').textContent='Installation en cours… La TV va redémarrer l\'app.';
+  S._updateUrl=null;
+});
 
 // ═══════════════════════════════════════════════════════════════════
 //  INIT

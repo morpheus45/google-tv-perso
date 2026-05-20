@@ -10,7 +10,7 @@ android {
         applicationId "com.googletvperso.app"
         minSdk 21
         targetSdk 34
-        versionCode 1
+        versionCode project.hasProperty('versionCode') ? project.versionCode.toInteger() : 1
         versionName "1.0"
     }
 

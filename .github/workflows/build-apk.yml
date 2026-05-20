@@ -51,7 +51,7 @@ jobs:
 
       # ── 6. Build Release APK ───────────────────────────────────────
       - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon -PversionCode=${{ github.run_number }}
 
       # ── 7. Renommer l'APK ─────────────────────────────────────────
       - name: Rename APK
