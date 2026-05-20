@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr" style="background:#000">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Google TV Perso — Lecteur</title>
+  <meta name="theme-color" content="#000000" />
+  <!-- Fond noir immédiat avant chargement CSS -->
+  <style>html,body{background:#000 !important;margin:0;padding:0}</style>
+  <link rel="stylesheet" href="player.css" />
+  <!-- Librairies streaming : hls.js (HLS/m3u8) + mpegts.js (flux .ts live) -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest" onerror="console.warn('HLS.js indisponible')"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest" onerror="console.warn('MPEG-TS.js indisponible')"></script>
+  <script>
+    // Expose l'identité native avant que player.js s'exécute
+    window.PIPSILY_NATIVE = (typeof AndroidBridge !== 'undefined') ? 'android_tv' : null;
+  </script>
+</head>
+<body style="background:#000">
+  <div class="player-shell">
+
+    <!-- Barre supérieure -->
+    <div class="player-top">
+      <button id="backBtn" class="icon-btn" type="button">← Retour</button>
+      <div class="player-title-wrap">
+        <div id="playerTitle" class="player-title">Lecture</div>
+        <div id="playerSub"   class="player-meta"></div>
+      </div>
+      <div id="liveIndicator" class="live-badge" hidden>● LIVE</div>
+    </div>
+
+    <!-- Vidéo -->
+    <div class="video-wrap">
+      <video id="video" playsinline autoplay preload="metadata"></video>
+      <div id="overlay" class="overlay">
+        <button id="playOverlayBtn" class="play-overlay" type="button">▶</button>
+      </div>
+      <div id="playbackStatus" class="playback-status" hidden></div>
+
+      <!-- Contrôles TV superposés (apparaissent au survol / focus) -->
+      <div id="tvControls" class="tv-controls">
+        <div class="tv-ctrl-row">
+          <button id="tc-back"  class="tc-btn tc-back"  type="button">← Retour</button>
+          <div class="tc-title" id="tc-title"></div>
+          <button id="tc-fs"    class="tc-btn tc-fs"    type="button">⛶</button>
+        </div>
+        <div class="tc-spacer"></div>
+        <div class="tv-ctrl-row">
+          <button id="tc-prev"  class="tc-btn" type="button" disabled>⏮</button>
+          <button id="tc-rw"    class="tc-btn" type="button">⏪ 10s</button>
+          <button id="tc-play"  class="tc-btn tc-play" type="button">▶</button>
+          <button id="tc-ff"    class="tc-btn" type="button">10s ⏩</button>
+          <button id="tc-next"  class="tc-btn" type="button" disabled>⏭</button>
+        </div>
+        <div class="tv-ctrl-row tc-seek-row" id="seekRow">
+          <span id="tc-cur">0:00</span>
+          <div class="tc-seekbar-wrap">
+            <div class="tc-seekbar-bg">
+              <div class="tc-seekbar-fill" id="tc-fill"></div>
+            </div>
+          </div>
+          <span id="tc-dur">0:00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation épisodes -->
+    <div class="ep-nav" id="epNav">
+      <button id="prevEpBtn" class="ep-nav-btn" type="button" disabled>⏮ Épisode précédent</button>
+      <button id="nextEpBtn" class="ep-nav-btn ep-nav-btn--next" type="button" disabled>Épisode suivant ⏭</button>
+    </div>
+
+    <!-- Synopsis -->
+    <div class="player-panel">
+      <p id="plotText">Chargement…</p>
+    </div>
+
+  </div>
+
+  <script src="player.js"></script>
+</body>
+</html>

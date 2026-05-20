@@ -868,17 +868,16 @@ function gotoSection(sec) {
 function playItem(item) {
   if (!item) return;
   if (item.isLive && item.stream_id) {
-    openVlc(`http://goldenlink.live/live/${U}/${P}/${item.stream_id}.ts`, item.title, true);
+    openVlc(`http://goldenlink.live/live/${U}/${P}/${item.stream_id}.ts`, item.title, true, item);
     return;
   }
   if (item.stream_id) {
-    openVlc(`http://goldenlink.live/movie/${U}/${P}/${item.stream_id}.mkv`, item.title, false);
+    openVlc(`http://goldenlink.live/movie/${U}/${P}/${item.stream_id}.mkv`, item.title, false, item);
     return;
   }
   if (item.series_id) { showDetail(item); return; }
-  // Direct URL fallback
   if (item.url && !item.url.includes('player_api')) {
-    openVlc(item.url, item.title, false);
+    openVlc(item.url, item.title, false, item);
     return;
   }
   showDetail(item);
@@ -886,16 +885,28 @@ function playItem(item) {
 
 function playEp(ep) {
   const ext=ep.container_extension||'mkv';
-  openVlc(`http://goldenlink.live/series/${U}/${P}/${ep.id}.${ext}`,
-          `${ep.title||'Épisode '+ep.episode_num}`, false);
+  const title=`${S.detItem?.title||''} — ${ep.title||'Épisode '+ep.episode_num}`.trim().replace(/^—\s*/,'');
+  openVlc(`http://goldenlink.live/series/${U}/${P}/${ep.id}.${ext}`, title, false, S.detItem);
 }
 
-function openVlc(url, title, isLive) {
-  if (window.AndroidBridge?.openInVlc) {
-    AndroidBridge.openInVlc(url, title||'', isLive);
-  } else {
-    window.open(url);
-  }
+// Navigue vers player.html avec l'item dans sessionStorage
+// player.js lit sessionStorage et choisit la stratégie (VLC embarqué, HLS.js…)
+function openVlc(url, title, isLive, itemRef) {
+  const playerItem = {
+    title:         title || 'Lecture',
+    stream_url:    url,
+    url:           url,
+    type:          isLive ? 'live' : (itemRef?.series_id ? 'series' : 'vod'),
+    plot:          itemRef?.plot || '',
+    category:      itemRef?.category || '',
+    category_name: itemRef?.category || '',
+    isLive:        isLive || false,
+    series_id:     itemRef?.series_id || null,
+    stream_id:     itemRef?.stream_id || null,
+    image:         itemRef?.image || '',
+  };
+  sessionStorage.setItem('iptv_current_item', JSON.stringify(playerItem));
+  window.location.href = 'player.html';
 }
 
 // ═══════════════════════════════════════════════════════════════════
