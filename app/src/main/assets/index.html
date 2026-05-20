@@ -147,16 +147,31 @@ html,body{
 
 /* ─── CARD ───────────────────────────────────────────────────────── */
 .card{
-  flex-shrink:0;width:160px;border-radius:8px;overflow:hidden;
+  flex-shrink:0;width:105px;border-radius:7px;overflow:hidden;
   cursor:pointer;position:relative;transition:transform .2s,box-shadow .2s;
   outline:none;background:var(--card)
 }
-.card img{width:100%;height:216px;object-fit:cover;display:block}
-.card.live img{height:90px}   /* 16:9 */
-.cinfo{padding:7px 9px 9px}
-.ctitle{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ccat{font-size:11px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card.foc{transform:scale(1.08);box-shadow:0 0 0 3px #FFF,0 12px 36px rgba(0,0,0,.8);z-index:3}
+.card img{width:100%;height:140px;object-fit:cover;display:block}
+.card.live img{height:59px}   /* 16:9 */
+.cinfo{padding:5px 7px 7px}
+.ctitle{
+  font-size:11px;font-weight:500;
+  overflow:hidden;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical;
+  line-height:1.35;max-height:30px
+}
+.ccat{font-size:10px;color:var(--dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card.foc{transform:scale(1.09);box-shadow:0 0 0 2px #FFF,0 10px 28px rgba(0,0,0,.8);z-index:3}
+/* badge type sur la vignette */
+.ctype-badge{
+  position:absolute;top:5px;right:5px;
+  font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;
+  letter-spacing:.3px;pointer-events:none;
+  background:rgba(0,0,0,.72);
+}
+.ctype-film{color:#8AB4F8}
+.ctype-serie{color:#81C995}
+.ctype-live{color:#EA4335}
 
 /* ─── GRID VIEW ──────────────────────────────────────────────────── */
 #grid-wrap{display:flex;flex-wrap:wrap;gap:14px;padding:0 48px 40px;overflow-y:auto;flex:1;scrollbar-width:none}
@@ -554,9 +569,9 @@ async function loadContent() {
 
     Object.entries(byCat)
       .sort((a,b)=>b[1].length-a[1].length)
-      .slice(0,7)
-      .filter(([,v])=>v.length>=3)
-      .forEach(([cat,items])=>rows.push({title:cat,items:items.slice(0,25)}));
+      .filter(([,v])=>v.length>=2)
+      .slice(0,20)
+      .forEach(([cat,items])=>rows.push({title:cat,items:items.slice(0,40)}));
 
     if (S.liveItems.length) {
       rows.push({title:'TV en Direct',items:S.liveItems.slice(0,30),isLive:true});
@@ -627,12 +642,17 @@ function mkCard(item,ri,ci,isLive) {
   const t=document.createElement('div'); t.className='ctitle'; t.textContent=item.title;
   const ca=document.createElement('div'); ca.className='ccat'; ca.textContent=item.category||(isLive?'Live':'');
   info.append(t,ca); c.append(img,info);
+  // Badge type (coin haut-droit)
+  const badge=document.createElement('span');
+  badge.className='ctype-badge';
   if (isLive) {
-    const badge=document.createElement('span');
-    badge.style.cssText='position:absolute;top:6px;left:6px;background:#EA4335;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:.5px;pointer-events:none';
-    badge.textContent='LIVE';
-    c.appendChild(badge);
+    badge.textContent='LIVE'; badge.classList.add('ctype-live');
+  } else if (item.series_id) {
+    badge.textContent='SÉRIE'; badge.classList.add('ctype-serie');
+  } else {
+    badge.textContent='FILM'; badge.classList.add('ctype-film');
   }
+  c.appendChild(badge);
   return c;
 }
 
