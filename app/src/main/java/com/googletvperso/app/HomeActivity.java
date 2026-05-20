@@ -256,9 +256,10 @@ public class HomeActivity extends FragmentActivity {
         /** Requête HTTP depuis Java (pas de restriction mixed content) */
         @JavascriptInterface
         public String fetchJson(String url) {
+            java.net.HttpURLConnection conn = null;
             try {
                 java.net.URL u = new java.net.URL(url.replace("https://", "http://"));
-                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) u.openConnection();
+                conn = (java.net.HttpURLConnection) u.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setConnectTimeout(10000);
                 conn.setReadTimeout(10000);
@@ -267,10 +268,12 @@ public class HomeActivity extends FragmentActivity {
                 if (conn.getResponseCode() != 200) return null;
                 java.io.InputStream is = conn.getInputStream();
                 java.util.Scanner sc = new java.util.Scanner(is, "UTF-8").useDelimiter("\\A");
-                String result = sc.hasNext() ? sc.next() : "";
-                conn.disconnect();
-                return result;
-            } catch (Exception e) { return null; }
+                return sc.hasNext() ? sc.next() : "";
+            } catch (Exception e) {
+                return null;
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
         }
 
         /** Affiche un toast système */

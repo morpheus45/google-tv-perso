@@ -89,7 +89,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 }
 .hbg{
   position:absolute;inset:0;background-size:cover;
-  background-position:center 20%;transition:opacity .9s ease
+  background-position:center 20%;transition:opacity .5s ease
 }
 .hbg::after{
   content:'';position:absolute;inset:0;
@@ -361,12 +361,14 @@ const P    = 'RE88M4E';
 const S = {
   sec: 'home',          // section active
   zone: 'hero',         // 'sb'|'hero'|'row'|'det'|'grid'|'search'|'settings'
+  prevZone: 'hero',     // zone before opening detail overlay
   sbOpen: false,
   sbIdx: 0,             // sidebar selected item index
   hBtn: 0,              // hero button 0=play 1=info
   rowIdx: 0,            // focused row
   cardIdx: 0,           // focused card in row
   gridIdx: 0,           // focused card in grid
+  gridItems: [],        // items currently shown in grid (mirrors renderGrid arg)
   detEpIdx: 0,          // focused episode
   setIdx: 0,            // settings row
   rows: [],             // [{title, items, isLive?}]
@@ -451,74 +453,75 @@ function shuffle(a) {
 }
 
 async function loadContent() {
-  const [vodRaw, seriesRaw, liveRaw] = await Promise.all([
-    loadJSON(GH+'vod_catalog.json'),
-    loadJSON(GH+'series_catalog.json'),
-    bridgeFetch(`${API}?username=${U}&password=${P}&action=get_live_streams`),
-  ]);
+  try {
+    const [vodRaw, seriesRaw, liveRaw] = await Promise.all([
+      loadJSON(GH+'vod_catalog.json'),
+      loadJSON(GH+'series_catalog.json'),
+      bridgeFetch(`${API}?username=${U}&password=${P}&action=get_live_streams`),
+    ]);
 
-  const all = [];
-  const byCat = {};
+    const all = [];
+    const byCat = {};
+    const seen = new Set(); // O(1) dedup
 
-  function addItem(raw) {
-    const item = normalise(raw);
-    if (!item) return;
-    if (all.find(x=>x.title===item.title)) return; // dedup
-    all.push(item);
-    const cat = item.category || 'Autres';
-    (byCat[cat] = byCat[cat]||[]).push(item);
+    function addItem(raw) {
+      const item = normalise(raw);
+      if (!item) return;
+      if (seen.has(item.title)) return;
+      seen.add(item.title);
+      all.push(item);
+      const cat = item.category || 'Autres';
+      (byCat[cat] = byCat[cat]||[]).push(item);
+    }
+
+    if (Array.isArray(vodRaw))    vodRaw.forEach(addItem);
+    if (Array.isArray(seriesRaw)) seriesRaw.forEach(addItem);
+
+    S.allItems = all;
+
+    // Live channels
+    if (Array.isArray(liveRaw)) {
+      S.liveItems = liveRaw.map(ch=>({
+        title:    ch.name,
+        image:    ch.stream_icon||'',
+        category: ch.category_name||'Live TV',
+        plot:     '',
+        stream_id:ch.stream_id,
+        isLive:   true,
+      }));
+    }
+
+    // Build home rows
+    const rows = [];
+    const pool = all.filter(i=>i.image);
+    S.heroPool = pool;
+
+    if (pool.length) rows.push({title:'Recommandé pour vous',items:shuffle(pool).slice(0,20)});
+
+    Object.entries(byCat)
+      .sort((a,b)=>b[1].length-a[1].length)
+      .slice(0,7)
+      .filter(([,v])=>v.length>=3)
+      .forEach(([cat,items])=>rows.push({title:cat,items:items.slice(0,25)}));
+
+    if (S.liveItems.length) {
+      rows.push({title:'TV en Direct',items:S.liveItems.slice(0,30),isLive:true});
+    }
+
+    S.rows = rows;
+    if (S.heroPool.length) setHero(S.heroPool[Math.floor(Math.random()*Math.min(S.heroPool.length,20))]);
+    renderRows(rows);
+
+    clearInterval(S.heroTimer);
+    S.heroTimer = setInterval(()=>{
+      if (S.zone!=='hero') return;
+      const p=S.heroPool;
+      if (p.length) setHero(p[Math.floor(Math.random()*Math.min(p.length,20))]);
+    }, 9000);
+
+  } finally {
+    $('loading').style.display='none';
   }
-
-  if (Array.isArray(vodRaw))    vodRaw.forEach(addItem);
-  if (Array.isArray(seriesRaw)) seriesRaw.forEach(addItem);
-
-  S.allItems = all;
-
-  // Live channels
-  if (Array.isArray(liveRaw)) {
-    S.liveItems = liveRaw.map(ch=>({
-      title:    ch.name,
-      image:    ch.stream_icon||'',
-      category: ch.category_name||'Live TV',
-      plot:     '',
-      stream_id:ch.stream_id,
-      isLive:   true,
-    }));
-  }
-
-  // Build home rows
-  const rows = [];
-  const pool = all.filter(i=>i.image);
-  S.heroPool = pool;
-
-  // "Pour vous" — random selection
-  if (pool.length) rows.push({title:'Recommandé pour vous',items:shuffle(pool).slice(0,20)});
-
-  // Category rows (top 7 by size)
-  Object.entries(byCat)
-    .sort((a,b)=>b[1].length-a[1].length)
-    .slice(0,7)
-    .filter(([,v])=>v.length>=3)
-    .forEach(([cat,items])=>rows.push({title:cat,items:items.slice(0,25)}));
-
-  // Live row
-  if (S.liveItems.length) {
-    rows.push({title:'TV en Direct',items:S.liveItems.slice(0,30),isLive:true});
-  }
-
-  S.rows = rows;
-  if (S.heroPool.length) setHero(S.heroPool[Math.floor(Math.random()*Math.min(S.heroPool.length,20))]);
-  renderRows(rows);
-
-  // Hero auto-rotate
-  clearInterval(S.heroTimer);
-  S.heroTimer = setInterval(()=>{
-    if (S.zone!=='hero') return;
-    const p=S.heroPool;
-    if (p.length) setHero(p[Math.floor(Math.random()*Math.min(p.length,20))]);
-  }, 9000);
-
-  $('loading').style.display='none';
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -529,14 +532,19 @@ function setHero(item) {
   $('htitle').textContent = item.title;
   $('hmeta').textContent  = item.category||'';
   $('hplot').textContent  = item.plot||'';
-  if (item.image) {
-    $('hbg').style.backgroundImage = `url('${item.image}')`;
-    $('hposter').src = item.image;
-    $('hposter').style.display = 'block';
-  } else {
-    $('hbg').style.backgroundImage='';
-    $('hposter').style.display='none';
-  }
+  const hbg = $('hbg');
+  hbg.style.opacity = '0';
+  setTimeout(() => {
+    if (item.image) {
+      hbg.style.backgroundImage = `url('${item.image}')`;
+      $('hposter').src = item.image;
+      $('hposter').style.display = 'block';
+    } else {
+      hbg.style.backgroundImage = '';
+      $('hposter').style.display = 'none';
+    }
+    hbg.style.opacity = '1';
+  }, 280);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -560,10 +568,17 @@ function mkCard(item,ri,ci,isLive) {
   const img=document.createElement('img');
   img.src=item.image||BLANK;
   img.loading='lazy'; img.alt=item.title;
+  img.onerror=()=>{ img.src=BLANK; img.onerror=null; };
   const info=document.createElement('div'); info.className='cinfo';
   const t=document.createElement('div'); t.className='ctitle'; t.textContent=item.title;
   const ca=document.createElement('div'); ca.className='ccat'; ca.textContent=item.category||(isLive?'Live':'');
   info.append(t,ca); c.append(img,info);
+  if (isLive) {
+    const badge=document.createElement('span');
+    badge.style.cssText='position:absolute;top:6px;left:6px;background:#EA4335;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:.5px;pointer-events:none';
+    badge.textContent='LIVE';
+    c.appendChild(badge);
+  }
   return c;
 }
 
@@ -573,6 +588,7 @@ const BLANK="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width=
 //  RENDER GRID (for section views)
 // ═══════════════════════════════════════════════════════════════════
 function renderGrid(items,isLive) {
+  S.gridItems=items;
   const w=$('grid-wrap'); w.innerHTML='';
   items.forEach((item,i)=>{
     const c=mkCard(item,-1,i,isLive);
@@ -666,8 +682,8 @@ function nav(dir) {
   if (z==='hero') {
     if (dir==='l') { openSb(); S.zone='sb'; }
     else if (dir==='r') S.hBtn=Math.min(1,S.hBtn+1);
-    else if (dir==='u') S.hBtn=Math.max(0,S.hBtn-1);
     else if (dir==='d') { S.zone='row'; S.rowIdx=0; S.cardIdx=0; }
+    // UP in hero: no action (buttons are horizontal, nothing above)
     focus(); return;
   }
 
@@ -734,13 +750,7 @@ function select() {
     return;
   }
   if (z==='grid') {
-    const c=$('grid-wrap').querySelectorAll('.card')[S.gridIdx];
-    if (!c) return;
-    const sec=S.sec;
-    let item;
-    if (sec==='movies') item=S.allItems.filter(i=>!i.series_id&&!i.isLive)[S.gridIdx];
-    else if (sec==='shows') item=S.allItems.filter(i=>i.series_id)[S.gridIdx];
-    else if (sec==='live') item=S.liveItems[S.gridIdx];
+    const item=S.gridItems[S.gridIdx];
     if (item) { item.series_id ? showDetail(item) : playItem(item); }
     return;
   }
@@ -866,6 +876,7 @@ function openVlc(url, title, isLive) {
 //  DETAIL OVERLAY
 // ═══════════════════════════════════════════════════════════════════
 async function showDetail(item) {
+  S.prevZone=S.zone;
   S.detItem=item; S.detEps=[]; S.detEpIdx=0;
   $('det-img').src  = item.image||'';
   $('det-title').textContent = item.title;
@@ -900,13 +911,14 @@ async function showDetail(item) {
 
 function renderEps(all,grouped) {
   const c=$('det-eps'); c.innerHTML='';
+  let globalIdx=0;
   for (const [s,list] of Object.entries(grouped)) {
     const h=document.createElement('div'); h.className='ephead';
     h.textContent=`Saison ${s}`; c.appendChild(h);
     list.forEach(ep=>{
       const el=document.createElement('div'); el.className='ep';
       el.textContent=`Ép. ${ep.episode_num}${ep.title?' — '+ep.title:''}`;
-      const idx=all.indexOf(ep);
+      const idx=globalIdx++;
       el.onclick=()=>{ S.detEpIdx=idx; playEp(ep); };
       c.appendChild(el);
     });
@@ -915,24 +927,30 @@ function renderEps(all,grouped) {
 
 function closeDet() {
   $('det').classList.remove('on');
-  S.zone = S.sec==='home' ? 'row' : 'grid';
+  S.zone = S.prevZone || (S.sec==='home' ? 'hero' : 'grid');
   focus();
 }
 
 // ═══════════════════════════════════════════════════════════════════
 //  SEARCH
 // ═══════════════════════════════════════════════════════════════════
+let _searchTimer;
 $('sinput').addEventListener('input',e=>{
-  const q=e.target.value.toLowerCase();
-  const res=S.allItems.concat(S.liveItems)
-    .filter(i=>i.title.toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q))
-    .slice(0,60);
-  const c=$('sresults'); c.innerHTML='';
-  res.forEach((item,i)=>{
-    const card=mkCard(item,-1,i,item.isLive);
-    card.onclick=()=>{ item.series_id?showDetail(item):playItem(item); };
-    c.appendChild(card);
-  });
+  clearTimeout(_searchTimer);
+  _searchTimer=setTimeout(()=>{
+    const q=e.target.value.toLowerCase().trim();
+    const c=$('sresults');
+    if (q.length<2) { c.innerHTML=''; return; }
+    const res=S.allItems.concat(S.liveItems)
+      .filter(i=>i.title.toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q))
+      .slice(0,60);
+    c.innerHTML='';
+    res.forEach((item,i)=>{
+      const card=mkCard(item,-1,i,item.isLive);
+      card.onclick=()=>{ item.series_id?showDetail(item):playItem(item); };
+      c.appendChild(card);
+    });
+  },300);
 });
 
 // ═══════════════════════════════════════════════════════════════════
