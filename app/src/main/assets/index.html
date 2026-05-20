@@ -17,75 +17,65 @@
   --accent:#4285F4;
   --accent-light:#8AB4F8;
   --red:#EA4335;
-  --sw:80px;    /* sidebar fermée */
-  --so:260px;   /* sidebar ouverte */
   --ease:.22s ease;
+  --nav-h:72px;
 }
 
 html,body{
-  width:1920px;height:1080px;   /* ancre le layout — le WebView scale ensuite */
+  width:1920px;height:1080px;
   background:var(--bg);color:var(--text);
   font-family:'Google Sans','Roboto','Noto Sans',system-ui,sans-serif;
-  font-size:16px;               /* base TV : lisible depuis le canapé */
+  font-size:16px;
   overflow:hidden;user-select:none;-webkit-user-select:none
 }
 
 /* ─── APP SHELL ──────────────────────────────────────────────────── */
-#app{display:flex;width:1920px;height:1080px;overflow:hidden;position:relative}
+#app{position:relative;width:1920px;height:1080px;overflow:hidden}
 
-/* ─── SIDEBAR ────────────────────────────────────────────────────── */
-#sb{
-  width:var(--sw);height:100%;background:transparent;
-  display:flex;flex-direction:column;align-items:flex-start;
-  padding:32px 0;transition:width var(--ease),background var(--ease);
-  flex-shrink:0;z-index:10;position:relative;overflow:hidden
+/* ─── TOP NAV (Google TV style) ──────────────────────────────────── */
+#topnav{
+  position:absolute;top:0;left:0;right:0;
+  display:flex;align-items:center;
+  height:var(--nav-h);padding:0 40px;
+  z-index:20;
+  background:linear-gradient(to bottom,rgba(0,0,0,.82) 0%,rgba(0,0,0,.5) 60%,transparent 100%);
 }
-#sb.open{width:var(--so);background:rgba(15,15,15,.97)}
+.nav-logo{display:flex;align-items:center;margin-right:24px;flex-shrink:0}
+.nav-logo svg{width:28px;height:28px}
 
-.sb-logo{
-  display:flex;align-items:center;padding:0 22px;
-  margin-bottom:40px;height:40px;white-space:nowrap;overflow:hidden
-}
-.sb-logo svg{width:32px;height:32px;flex-shrink:0}
-.sb-logo span{
-  margin-left:14px;font-size:19px;font-weight:700;color:#fff;
-  opacity:0;transition:opacity var(--ease);white-space:nowrap
-}
-#sb.open .sb-logo span{opacity:1}
+#nav-items{display:flex;align-items:center;gap:4px;flex:1}
 
 .ni{
-  display:flex;align-items:center;width:calc(100% - 8px);
-  padding:16px 22px;cursor:pointer;
-  border-radius:0 30px 30px 0;
-  transition:background var(--ease);outline:none;overflow:hidden;
-  white-space:nowrap;margin-bottom:4px
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 20px;border-radius:24px;
+  font-size:15px;font-weight:500;cursor:pointer;outline:none;
+  color:rgba(255,255,255,.78);
+  transition:background .15s,color .15s;
+  white-space:nowrap;flex-shrink:0;
 }
-.ni .ico{font-size:24px;width:36px;flex-shrink:0;text-align:center}
-.ni .lbl{
-  margin-left:18px;font-size:16px;font-weight:500;
-  opacity:0;transition:opacity var(--ease)
-}
-#sb.open .ni .lbl{opacity:1}
-.ni:hover,.ni.foc{background:rgba(255,255,255,.12)}
-.ni.active{background:rgba(66,133,244,.2);color:var(--accent-light)}
+.ni .ico{font-size:16px}
+.ni:hover{background:rgba(255,255,255,.12)}
+.ni.active{background:rgba(255,255,255,.15);color:#FFF;font-weight:600}
+.ni.foc{background:rgba(255,255,255,.88);color:#111 !important}
 
-/* ─── MAIN ───────────────────────────────────────────────────────── */
-#main{flex:1;height:100%;overflow:hidden;display:flex;flex-direction:column;position:relative}
-
-/* ─── TOP BAR ────────────────────────────────────────────────────── */
-#topbar{
-  position:absolute;top:0;right:0;left:0;
-  display:flex;align-items:center;padding:24px 48px 0;z-index:5;
-  pointer-events:none
+#nav-right{display:flex;align-items:center;gap:12px;flex-shrink:0}
+#clock{font-size:14px;color:rgba(255,255,255,.65);font-variant-numeric:tabular-nums}
+.nav-icon{
+  width:40px;height:40px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.1);color:#FFF;font-size:18px;
+  cursor:pointer;outline:none;transition:background .15s;flex-shrink:0
 }
-#topbar .stitle{font-size:22px;font-weight:600;flex:1}
-#clock{font-size:17px;color:var(--dim);font-variant-numeric:tabular-nums}
+.nav-icon.foc{background:rgba(255,255,255,.88);color:#111}
+
+/* ─── MAIN (full 1920×1080, topnav flotte au-dessus) ────────────── */
+#main{position:absolute;inset:0;overflow:hidden;display:flex;flex-direction:column}
 
 /* ─── VIEWS ──────────────────────────────────────────────────────── */
 #home-view{display:flex;flex-direction:column;height:100%;overflow:hidden}
-#grid-view{display:none;flex-direction:column;height:100%;padding-top:80px}
-#search-view{display:none;flex-direction:column;height:100%;padding-top:80px}
-#settings-view{display:none;flex-direction:column;height:100%;padding:88px 48px}
+#grid-view{display:none;flex-direction:column;height:100%;padding-top:calc(var(--nav-h) + 12px)}
+#search-view{display:none;flex-direction:column;height:100%;padding-top:calc(var(--nav-h) + 12px)}
+#settings-view{display:none;flex-direction:column;height:100%;padding:calc(var(--nav-h) + 24px) 48px 48px}
 
 /* ─── HERO ───────────────────────────────────────────────────────── */
 #hero{
@@ -286,50 +276,31 @@ html,body{
 <!-- ── APP ──────────────────────────────────────────────────────── -->
 <div id="app">
 
-  <!-- SIDEBAR -->
-  <nav id="sb">
-    <div class="sb-logo">
-      <!-- Google TV logo simplifié -->
+  <!-- TOP NAV Google TV style -->
+  <nav id="topnav">
+    <div class="nav-logo">
       <svg viewBox="0 0 28 28" fill="none">
         <rect x="2" y="6" width="24" height="16" rx="3" fill="#4285F4"/>
         <rect x="10" y="22" width="8" height="3" fill="#4285F4"/>
         <rect x="7" y="24" width="14" height="2" rx="1" fill="#4285F4"/>
         <path d="M8 13l3.5 3L20 10" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <span>Google TV Perso</span>
     </div>
-    <div class="ni active" data-s="home">
-      <span class="ico">⌂</span><span class="lbl">Accueil</span>
+    <div id="nav-items">
+      <div class="ni active" data-s="home"><span class="ico">⌂</span><span>Accueil</span></div>
+      <div class="ni" data-s="search"><span class="ico">🔍</span><span>Rechercher</span></div>
+      <div class="ni" data-s="movies"><span class="ico">🎬</span><span>Films</span></div>
+      <div class="ni" data-s="shows"><span class="ico">📺</span><span>Séries</span></div>
+      <div class="ni" data-s="live"><span class="ico">📡</span><span>TV en Direct</span></div>
     </div>
-    <div class="ni" data-s="search">
-      <span class="ico">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-          <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-      </span>
-      <span class="lbl">Rechercher</span>
-    </div>
-    <div class="ni" data-s="movies">
-      <span class="ico">🎬</span><span class="lbl">Films</span>
-    </div>
-    <div class="ni" data-s="shows">
-      <span class="ico">📺</span><span class="lbl">Séries</span>
-    </div>
-    <div class="ni" data-s="live">
-      <span class="ico">📡</span><span class="lbl">TV en Direct</span>
-    </div>
-    <div class="ni" data-s="settings">
-      <span class="ico">⚙</span><span class="lbl">Paramètres</span>
+    <div id="nav-right">
+      <span id="clock">--:--</span>
+      <div class="nav-icon ni" data-s="settings" title="Paramètres">⚙</div>
     </div>
   </nav>
 
   <!-- MAIN CONTENT -->
   <div id="main">
-    <!-- Top bar -->
-    <div id="topbar">
-      <span class="stitle" id="stitle">Accueil</span>
-      <span id="clock">--:--</span>
-    </div>
 
     <!-- HOME VIEW -->
     <div id="home-view">
@@ -426,10 +397,9 @@ const P    = 'RE88M4E';
 // ═══════════════════════════════════════════════════════════════════
 const S = {
   sec: 'home',          // section active
-  zone: 'hero',         // 'sb'|'hero'|'row'|'det'|'grid'|'search'|'settings'
+  zone: 'hero',         // 'nav'|'hero'|'row'|'det'|'grid'|'search'|'settings'
   prevZone: 'hero',     // zone before opening detail overlay
-  sbOpen: false,
-  sbIdx: 0,             // sidebar selected item index
+  navIdx: 0,            // index dans la topnav (0=home…5=settings)
   hBtn: 0,              // hero button 0=play 1=info
   rowIdx: 0,            // focused row
   cardIdx: 0,           // focused card in row
@@ -450,8 +420,8 @@ const S = {
   _forceUpdateActive: false, // true = popup bloquant visible
 };
 
-const SB_SECS = ['home','search','movies','shows','live','settings'];
-const SB_LABELS = {home:'Accueil',search:'Rechercher',movies:'Films',shows:'Séries',live:'TV en Direct',settings:'Paramètres'};
+const NAV_ITEMS = ['home','search','movies','shows','live','settings'];
+const NAV_LABELS = {home:'Accueil',search:'Rechercher',movies:'Films',shows:'Séries',live:'TV en Direct',settings:'Paramètres'};
 const SET_ROWS = ['set-reload','set-cache','set-update','set-about'];
 
 // ═══════════════════════════════════════════════════════════════════
@@ -754,8 +724,8 @@ function focus() {
   clearFoc();
   const z=S.zone;
 
-  if (z==='sb') {
-    qAll('.ni')[S.sbIdx]?.classList.add('foc');
+  if (z==='nav') {
+    qAll('.ni')[S.navIdx]?.classList.add('foc');
     return;
   }
   if (z==='hero') {
@@ -804,7 +774,7 @@ window.addEventListener('tv_left',  ()=>nav('l'));
 window.addEventListener('tv_right', ()=>nav('r'));
 window.addEventListener('tv_enter', ()=>select());
 window.addEventListener('tv_back',  ()=>back());
-window.addEventListener('tv_menu',  ()=>toggleSidebar());
+window.addEventListener('tv_menu',  ()=>toggleNav());
 
 // Keyboard fallback for PC dev
 document.addEventListener('keydown',e=>{
@@ -819,20 +789,26 @@ function nav(dir) {
   if (S._forceUpdateActive) return;
   const z=S.zone;
 
-  // ── SIDEBAR ──
-  if (z==='sb') {
-    if (dir==='u') S.sbIdx=Math.max(0,S.sbIdx-1);
-    else if (dir==='d') S.sbIdx=Math.min(SB_SECS.length-1,S.sbIdx+1);
-    else if (dir==='r') { closeSb(); S.zone='hero'; S.hBtn=0; }
+  // ── TOP NAV ──
+  if (z==='nav') {
+    if (dir==='l') S.navIdx=Math.max(0,S.navIdx-1);
+    else if (dir==='r') S.navIdx=Math.min(NAV_ITEMS.length-1,S.navIdx+1);
+    else if (dir==='d') {
+      // Descend vers le contenu selon la section active
+      if (S.sec==='home') { S.zone='hero'; S.hBtn=0; }
+      else if (S.sec==='grid'||S.sec==='movies'||S.sec==='shows'||S.sec==='live') { S.zone='grid'; }
+      else if (S.sec==='search') { S.zone='search'; }
+      else if (S.sec==='settings') { S.zone='settings'; }
+    }
     focus(); return;
   }
 
   // ── HERO ──
   if (z==='hero') {
-    if (dir==='l') { openSb(); S.zone='sb'; }
+    if (dir==='u') { S.zone='nav'; S.navIdx=NAV_ITEMS.indexOf(S.sec)||0; }
+    else if (dir==='l') S.hBtn=Math.max(0,S.hBtn-1);
     else if (dir==='r') S.hBtn=Math.min(1,S.hBtn+1);
     else if (dir==='d') { S.zone='row'; S.rowIdx=0; S.cardIdx=0; }
-    // UP in hero: no action (buttons are horizontal, nothing above)
     focus(); return;
   }
 
@@ -847,7 +823,6 @@ function nav(dir) {
       if (S.rowIdx<S.rows.length-1) { S.rowIdx++; S.cardIdx=0; }
     } else if (dir==='l') {
       if (S.cardIdx>0) S.cardIdx--;
-      else { openSb(); S.zone='sb'; }
     } else if (dir==='r') {
       S.cardIdx=Math.min(cnt-1,S.cardIdx+1);
     }
@@ -856,12 +831,15 @@ function nav(dir) {
 
   // ── GRID ──
   if (z==='grid') {
-    const cols=Math.floor(($('grid-wrap').offsetWidth)/194)||5; // ~180+14
+    const cols=Math.floor(($('grid-wrap').offsetWidth)/119)||8;
     const cnt=$('grid-wrap').querySelectorAll('.card').length;
-    if (dir==='l') { if (S.gridIdx>0) S.gridIdx--; else { openSb(); S.zone='sb'; } }
-    else if (dir==='r') S.gridIdx=Math.min(cnt-1,S.gridIdx+1);
-    else if (dir==='u') S.gridIdx=Math.max(0,S.gridIdx-cols);
+    if (dir==='u') {
+      if (S.gridIdx<cols) { S.zone='nav'; S.navIdx=NAV_ITEMS.indexOf(S.sec)||0; }
+      else S.gridIdx=Math.max(0,S.gridIdx-cols);
+    }
     else if (dir==='d') S.gridIdx=Math.min(cnt-1,S.gridIdx+cols);
+    else if (dir==='l') S.gridIdx=Math.max(0,S.gridIdx-1);
+    else if (dir==='r') S.gridIdx=Math.min(cnt-1,S.gridIdx+1);
     focus(); return;
   }
 
@@ -875,9 +853,11 @@ function nav(dir) {
 
   // ── SETTINGS ──
   if (z==='settings') {
-    if (dir==='u') S.setIdx=Math.max(0,S.setIdx-1);
+    if (dir==='u') {
+      if (S.setIdx===0) { S.zone='nav'; S.navIdx=NAV_ITEMS.indexOf('settings'); }
+      else S.setIdx=Math.max(0,S.setIdx-1);
+    }
     else if (dir==='d') S.setIdx=Math.min(SET_ROWS.length-1,S.setIdx+1);
-    else if (dir==='l') { openSb(); S.zone='sb'; }
     focus(); return;
   }
 }
@@ -888,7 +868,7 @@ function nav(dir) {
 function select() {
   if (S._forceUpdateActive) { startForceInstall(); return; }
   const z=S.zone;
-  if (z==='sb') { gotoSection(SB_SECS[S.sbIdx]); closeSb(); return; }
+  if (z==='nav') { gotoSection(NAV_ITEMS[S.navIdx]); return; }
   if (z==='hero') {
     if (S.hBtn===0 && S.heroItem) playItem(S.heroItem);
     else if (S.hBtn===1 && S.heroItem) showDetail(S.heroItem);
@@ -931,33 +911,27 @@ function select() {
 function back() {
   if (S._forceUpdateActive) return;
   if ($('det').classList.contains('on')) { closeDet(); return; }
-  if (S.sbOpen) { closeSb(); S.zone='hero'; focus(); return; }
   if (S.zone==='row') { S.zone='hero'; S.hBtn=0; focus(); return; }
   if (S.zone==='grid'||S.zone==='settings'||S.zone==='search') {
     gotoSection('home'); return;
   }
+  if (S.zone==='nav') { S.zone='hero'; focus(); return; }
   // On home hero → do nothing (prevents accidental exit as launcher)
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  SIDEBAR OPEN / CLOSE
-// ═══════════════════════════════════════════════════════════════════
-function openSb() { S.sbOpen=true; $('sb').classList.add('open'); }
-function closeSb() { S.sbOpen=false; $('sb').classList.remove('open'); }
-function toggleSidebar() {
-  if (S.sbOpen) { closeSb(); S.zone='hero'; focus(); }
-  else { openSb(); S.zone='sb'; focus(); }
+function toggleNav() {
+  if (S.zone==='nav') { S.zone='hero'; focus(); }
+  else { S.zone='nav'; S.navIdx=NAV_ITEMS.indexOf(S.sec)||0; focus(); }
 }
 
 // ═══════════════════════════════════════════════════════════════════
 //  SECTION SWITCH
 // ═══════════════════════════════════════════════════════════════════
 function gotoSection(sec) {
-  S.sec=sec; closeSb();
+  S.sec=sec;
 
-  // Update sidebar active state
+  // Update topnav active state
   qAll('.ni').forEach(el=>el.classList.toggle('active',el.dataset.s===sec));
-  $('stitle').textContent=SB_LABELS[sec]||sec;
 
   // Hide all views
   $('home-view').style.display='none';
