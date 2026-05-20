@@ -228,6 +228,36 @@ html,body{
 /* ─── FOCUS RING BOUTONS HERO ────────────────────────────────────── */
 #btn-play.foc{box-shadow:0 0 0 3px #FFF,0 0 22px rgba(255,255,255,.35)}
 #btn-info.foc{box-shadow:0 0 0 3px rgba(255,255,255,.7)}
+
+/* ─── FORCE UPDATE OVERLAY ───────────────────────────────────────── */
+#force-update{
+  display:none;position:fixed;inset:0;z-index:999;
+  background:rgba(0,0,0,.96);
+  align-items:center;justify-content:center;
+}
+#force-update.on{display:flex}
+.fu-card{
+  background:#1A1F33;border:2px solid var(--accent);border-radius:22px;
+  padding:56px 68px;max-width:660px;width:90%;text-align:center;
+  box-shadow:0 24px 80px rgba(66,133,244,.3);
+}
+.fu-icon{font-size:72px;margin-bottom:18px}
+.fu-title{font-size:30px;font-weight:700;margin-bottom:12px}
+.fu-sub{font-size:17px;color:var(--dim);margin-bottom:36px;line-height:1.6}
+.fu-ver{font-size:15px;color:var(--accent-light);margin-bottom:36px}
+.fu-btn{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:17px 52px;border:none;border-radius:32px;
+  background:var(--accent);color:#FFF;
+  font-size:19px;font-weight:700;cursor:pointer;outline:none;
+  transition:transform .15s,box-shadow .15s;
+}
+.fu-btn.foc,.fu-btn:focus{
+  transform:scale(1.07);
+  box-shadow:0 0 0 3px #fff,0 0 32px rgba(66,133,244,.6);
+}
+.fu-btn:disabled{opacity:.5;transform:none;cursor:not-allowed}
+.fu-progress{font-size:15px;color:var(--accent-light);margin-top:22px;min-height:22px}
 </style>
 </head>
 <body>
@@ -343,6 +373,18 @@ html,body{
   </div>
 </div>
 
+<!-- FORCE UPDATE OVERLAY — bloque toute l'UI jusqu'à l'installation -->
+<div id="force-update">
+  <div class="fu-card">
+    <div class="fu-icon">⬆</div>
+    <div class="fu-title" id="fu-title">Mise à jour disponible</div>
+    <div class="fu-sub">Une nouvelle version est disponible.<br>La mise à jour est obligatoire pour continuer.</div>
+    <div class="fu-ver" id="fu-ver"></div>
+    <button class="fu-btn" id="fu-btn" type="button" onclick="startForceInstall()">⬇ Installer maintenant</button>
+    <div class="fu-progress" id="fu-progress"></div>
+  </div>
+</div>
+
 <!-- DETAIL OVERLAY -->
 <div id="det">
   <div class="det-card">
@@ -388,7 +430,9 @@ const S = {
   detEps: [],
   heroTimer: null,
   heroPool: [],
-  _updateUrl: null,   // URL de téléchargement si mise à jour disponible
+  _updateUrl: null,          // URL de téléchargement si mise à jour disponible
+  _forceUpdateCheck: false,  // true = vérification au démarrage (popup bloquant)
+  _forceUpdateActive: false, // true = popup bloquant visible
 };
 
 const SB_SECS = ['home','search','movies','shows','live','settings'];
@@ -678,6 +722,7 @@ document.addEventListener('keydown',e=>{
 });
 
 function nav(dir) {
+  if (S._forceUpdateActive) return;
   const z=S.zone;
 
   // ── SIDEBAR ──
@@ -747,6 +792,7 @@ function nav(dir) {
 //  SELECT
 // ═══════════════════════════════════════════════════════════════════
 function select() {
+  if (S._forceUpdateActive) { startForceInstall(); return; }
   const z=S.zone;
   if (z==='sb') { gotoSection(SB_SECS[S.sbIdx]); closeSb(); return; }
   if (z==='hero') {
@@ -789,6 +835,7 @@ function select() {
 //  BACK
 // ═══════════════════════════════════════════════════════════════════
 function back() {
+  if (S._forceUpdateActive) return;
   if ($('det').classList.contains('on')) { closeDet(); return; }
   if (S.sbOpen) { closeSb(); S.zone='hero'; focus(); return; }
   if (S.zone==='row') { S.zone='hero'; S.hBtn=0; focus(); return; }
@@ -998,7 +1045,8 @@ $('set-update').onclick=()=>{
 
 // ── Vérification des mises à jour ──────────────────────────────────
 // Fonctionne avec ou sans AndroidBridge.checkUpdateAsync (vieil APK)
-async function checkForUpdate() {
+async function checkForUpdate(force = false) {
+  S._forceUpdateCheck = force;
   $('update-val').textContent = 'Vérification…';
   S._updateUrl = null;
 
@@ -1037,13 +1085,13 @@ window._onUpdateResult = function(data) {
     $('update-val').textContent=`✓ À jour (v${data.currentVersion})`;
     S._updateUrl=null;
   } else if (window.AndroidBridge?.downloadAndInstall) {
-    // Nouvel APK : téléchargement + installation automatique
+    S._updateUrl = data.downloadUrl;
     $('update-val').textContent=`⬆ v${data.latestVersion} disponible — OK pour installer`;
-    S._updateUrl=data.downloadUrl;
+    if (S._forceUpdateCheck) showForceUpdate(data);
   } else {
-    // Vieil APK sans downloadAndInstall : affiche l'info, l'utilisateur installe manuellement
+    S._updateUrl = null;
     $('update-val').textContent=`⬆ v${data.latestVersion} disponible — Installer manuellement`;
-    S._updateUrl=null;
+    if (S._forceUpdateCheck) showForceUpdate(data);
     if (window.AndroidBridge?.showToast) {
       AndroidBridge.showToast('Nouvelle version v'+data.latestVersion+' sur github.com/morpheus45/google-tv-perso');
     }
@@ -1051,11 +1099,38 @@ window._onUpdateResult = function(data) {
 };
 window._onDownloadProgress = function(pct) {
   $('update-val').textContent=`Téléchargement : ${pct}%`;
+  if (S._forceUpdateActive) {
+    $('fu-progress').textContent = `Téléchargement : ${pct}%`;
+    if (pct >= 100) $('fu-progress').textContent = 'Installation en cours…';
+  }
 };
 window.addEventListener('update_install_started', ()=>{
   $('update-val').textContent='Installation en cours…';
+  if (S._forceUpdateActive) $('fu-progress').textContent = 'Installation en cours…';
   S._updateUrl=null;
 });
+
+function showForceUpdate(data) {
+  S._forceUpdateActive = true;
+  $('fu-title').textContent = `Mise à jour v${data.latestVersion} disponible`;
+  $('fu-ver').textContent = `Version installée : ${data.currentVersion} → Nouvelle version : ${data.latestVersion}`;
+  $('force-update').classList.add('on');
+  $('fu-btn').classList.add('foc');
+}
+
+function startForceInstall() {
+  if (S._updateUrl && window.AndroidBridge?.downloadAndInstall) {
+    $('fu-btn').disabled = true;
+    $('fu-btn').textContent = '⏳ Téléchargement…';
+    $('fu-progress').textContent = 'Démarrage du téléchargement…';
+    AndroidBridge.downloadAndInstall(S._updateUrl);
+  } else {
+    $('fu-progress').textContent = 'Rendez-vous sur : github.com/morpheus45/google-tv-perso';
+    if (window.AndroidBridge?.showToast) {
+      AndroidBridge.showToast('Téléchargez l\'APK sur github.com/morpheus45/google-tv-perso');
+    }
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════
 //  INIT
@@ -1070,6 +1145,8 @@ window.addEventListener('update_install_started', ()=>{
 
   await loadContent();
   focus();
+  // Vérification silencieuse au démarrage — popup bloquant si nouvelle version
+  checkForUpdate(true);
 })();
 </script>
 </body>
