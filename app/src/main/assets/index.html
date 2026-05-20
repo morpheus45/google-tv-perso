@@ -493,26 +493,80 @@ async function loadJSON(url) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+//  PROGRESS / HISTORY  (même clés que VOD : pf_progress_v4 / pf_history_v4)
+// ═══════════════════════════════════════════════════════════════════
+const STORE = { progress:'pf_progress_v4', history:'pf_history_v4' };
+function storeGet(k,fb){ try{ const r=localStorage.getItem(k); return r?JSON.parse(r):fb; }catch{ return fb; } }
+function storeSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} }
+
+let _cacheP=null;
+function getProg(){ if(!_cacheP) _cacheP=storeGet(STORE.progress,{}); return _cacheP; }
+function saveProg(key,pct){ const p=getProg(); p[key]={pct,ts:Date.now()}; storeSet(STORE.progress,p); }
+
+function getHist(){ return storeGet(STORE.history,[]); }
+function histKey(item){ return item.series_id?'series_'+item.series_id:item.url||item.title; }
+function pushHist(item){
+  const key=histKey(item);
+  const h=getHist().filter(x=>x.key!==key);
+  h.unshift({key,item,at:Date.now()});
+  storeSet(STORE.history,h.slice(0,100));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  EPISODES MAP  (méthode VOD : episodes_map.json + episodes_partN.json)
+// ═══════════════════════════════════════════════════════════════════
+let _epMap=null, _epMapPromise=null;
+const _loadedChunks={};
+const epDb={};
+
+async function getEpMap(){
+  if(_epMap) return _epMap;
+  if(_epMapPromise) return _epMapPromise;
+  _epMapPromise=loadJSON(GH+'episodes_map.json').then(m=>{ _epMap=m||{}; return _epMap; });
+  return _epMapPromise;
+}
+async function ensureEpDb(seriesId){
+  const map=await getEpMap();
+  const chunkNum=seriesId?map[String(seriesId)]:null;
+  if(!chunkNum) return false;
+  if(!_loadedChunks[chunkNum]){
+    _loadedChunks[chunkNum]=loadJSON(GH+`episodes_part${chunkNum}.json`).then(chunk=>{
+      if(chunk&&typeof chunk==='object') Object.assign(epDb,chunk);
+    });
+  }
+  await _loadedChunks[chunkNum];
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 //  CONTENT LOADING
 // ═══════════════════════════════════════════════════════════════════
 function stripLang(t) { return t.replace(/^(FR|EN|ES|AR|DE|IT|TR)\s*[-–]\s*/i,'').trim(); }
 function cleanCat(c)  { return (c||'').replace(/^(SRS|VOD)\s*\|\s*/i,'').trim(); }
 
 function normalise(item) {
-  if (!item?.title) return null;
-  const url = item.url || '';
-  const sid = item.series_id || (url.match(/series_id=(\d+)/)?.[1]) || null;
-  const vid = item.stream_id  || (url.match(/vod_id=(\d+)/)?.[1])  || null;
+  if (!item?.title && !item?.name) return null;
+  const url = item.stream_url || item.url || '';
+  const sid = item.series_id || null;
+  const vid = item.stream_id  || null;
+  const category = item.category_name || item.category || '';
   return {
-    title:     stripLang(item.title),
-    image:     item.image || item.logo || '',
-    category:  cleanCat(item.category),
+    title:     stripLang(item.title || item.name || ''),
+    image:     item.stream_icon || item.image || item.logo || '',
+    category:  cleanCat(category),
     plot:      item.plot || item.description || '',
     url,
     series_id: sid,
     stream_id: vid,
     isLive:    false,
   };
+}
+
+// Extrait le tableau d'items depuis la structure {meta, categories, items[]} de VOD
+function extractArr(json) {
+  if (!json) return [];
+  if (Array.isArray(json)) return json;
+  return json.items || json.streams || json.movies || json.series || [];
 }
 
 function shuffle(a) {
@@ -523,15 +577,16 @@ function shuffle(a) {
 
 async function loadContent() {
   try {
-    const [vodRaw, seriesRaw, liveRaw] = await Promise.all([
-      loadJSON(GH+'vod_catalog.json'),
-      loadJSON(GH+'series_catalog.json'),
-      bridgeFetch(`${API}?username=${U}&password=${P}&action=get_live_streams`),
+    // Méthode VOD exacte : fichiers statiques GitHub Pages (pas d'appel API)
+    const [vodJson, seriesJson, liveJson] = await Promise.all([
+      loadJSON(GH+'vod.json'),
+      loadJSON(GH+'series.json'),
+      loadJSON(GH+'live.json'),
     ]);
 
     const all = [];
     const byCat = {};
-    const seen = new Set(); // O(1) dedup
+    const seen = new Set();
 
     function addItem(raw) {
       const item = normalise(raw);
@@ -543,27 +598,46 @@ async function loadContent() {
       (byCat[cat] = byCat[cat]||[]).push(item);
     }
 
-    if (Array.isArray(vodRaw))    vodRaw.forEach(addItem);
-    if (Array.isArray(seriesRaw)) seriesRaw.forEach(addItem);
+    extractArr(vodJson).forEach(addItem);
+    extractArr(seriesJson).forEach(addItem);
 
     S.allItems = all;
 
-    // Live channels
-    if (Array.isArray(liveRaw)) {
-      S.liveItems = liveRaw.map(ch=>({
-        title:    ch.name,
-        image:    ch.stream_icon||'',
-        category: ch.category_name||'Live TV',
-        plot:     '',
-        stream_id:ch.stream_id,
+    // Live : live.json d'abord, fallback API
+    const liveArr = extractArr(liveJson);
+    if (liveArr.length) {
+      S.liveItems = liveArr.map((ch,i)=>({
+        title:    ch.title||ch.name||'Sans titre',
+        image:    ch.stream_icon||ch.image||'',
+        category: ch.category_name||ch.category||'Live TV',
+        plot:     ch.plot||'',
+        url:      ch.stream_url||ch.url||`http://goldenlink.live/live/${U}/${P}/${ch.stream_id||i}.ts`,
+        stream_id:ch.stream_id||ch.id||String(i),
         isLive:   true,
       }));
+    } else {
+      const apiLive = await bridgeFetch(`${API}?username=${U}&password=${P}&action=get_live_streams`);
+      if (Array.isArray(apiLive)) {
+        S.liveItems = apiLive.map(ch=>({
+          title:    ch.name,
+          image:    ch.stream_icon||'',
+          category: ch.category_name||'Live TV',
+          plot:     '',
+          url:      `http://goldenlink.live/live/${U}/${P}/${ch.stream_id}.ts`,
+          stream_id:ch.stream_id,
+          isLive:   true,
+        }));
+      }
     }
 
     // Build home rows
     const rows = [];
     const pool = all.filter(i=>i.image);
     S.heroPool = pool;
+
+    // "Continuer à regarder" depuis l'historique localStorage
+    const histItems = getHist().slice(0,15).map(h=>h.item).filter(Boolean);
+    if (histItems.length) rows.push({title:'▶ Continuer à regarder',items:histItems});
 
     if (pool.length) rows.push({title:'Recommandé pour vous',items:shuffle(pool).slice(0,20)});
 
@@ -930,6 +1004,14 @@ function gotoSection(sec) {
 // ═══════════════════════════════════════════════════════════════════
 function playItem(item) {
   if (!item) return;
+  pushHist(item);
+  // Méthode VOD : url est déjà le stream URL dans vod.json/live.json
+  if (item.url && !item.url.includes('player_api') && !item.series_id) {
+    openVlc(item.url, item.title, item.isLive||false, item);
+    return;
+  }
+  if (item.series_id) { showDetail(item); return; }
+  // Fallback construction URL depuis stream_id
   if (item.isLive && item.stream_id) {
     openVlc(`http://goldenlink.live/live/${U}/${P}/${item.stream_id}.ts`, item.title, true, item);
     return;
@@ -938,18 +1020,15 @@ function playItem(item) {
     openVlc(`http://goldenlink.live/movie/${U}/${P}/${item.stream_id}.mkv`, item.title, false, item);
     return;
   }
-  if (item.series_id) { showDetail(item); return; }
-  if (item.url && !item.url.includes('player_api')) {
-    openVlc(item.url, item.title, false, item);
-    return;
-  }
   showDetail(item);
 }
 
 function playEp(ep) {
-  const ext=ep.container_extension||'mkv';
   const title=`${S.detItem?.title||''} — ${ep.title||'Épisode '+ep.episode_num}`.trim().replace(/^—\s*/,'');
-  openVlc(`http://goldenlink.live/series/${U}/${P}/${ep.id}.${ext}`, title, false, S.detItem);
+  // Méthode VOD : ep.url est pré-construit dans episodes_partN.json
+  const url = ep.url || `http://goldenlink.live/series/${U}/${P}/${ep.id}.${ep.ext||ep.container_extension||'mkv'}`;
+  if (S.detItem) pushHist(S.detItem);
+  openVlc(url, title, false, S.detItem);
 }
 
 // Navigue vers player.html avec l'item dans sessionStorage
@@ -994,16 +1073,29 @@ async function showDetail(item) {
     $('det-actions').appendChild(btn);
   } else {
     $('det-eps').innerHTML='<p style="color:var(--dim);padding:8px 0">Chargement des épisodes…</p>';
-    const data=await bridgeFetch(`${API}?username=${U}&password=${P}&action=get_series_info&series_id=${item.series_id}`);
-    if (data?.episodes) {
+    // Méthode VOD : episodes_map.json → episodes_partN.json (pré-indexé, pas d'appel API)
+    const found = await ensureEpDb(item.series_id);
+    const epEntry = found && epDb[String(item.series_id)];
+    if (epEntry?.seasons) {
       const eps=[];
-      for (const [sn,list] of Object.entries(data.episodes)) {
+      for (const [sn,list] of Object.entries(epEntry.seasons)) {
         list.forEach(ep=>eps.push({...ep,_s:sn}));
       }
       S.detEps=eps;
-      renderEps(eps,data.episodes);
+      renderEps(eps,epEntry.seasons);
     } else {
-      $('det-eps').innerHTML='<p style="color:var(--dim)">Aucun épisode disponible.</p>';
+      // Fallback API si la série n'est pas dans les fichiers pré-indexés
+      const data=await bridgeFetch(`${API}?username=${U}&password=${P}&action=get_series_info&series_id=${item.series_id}`);
+      if (data?.episodes) {
+        const eps=[];
+        for (const [sn,list] of Object.entries(data.episodes)) {
+          list.forEach(ep=>eps.push({...ep,_s:sn}));
+        }
+        S.detEps=eps;
+        renderEps(eps,data.episodes);
+      } else {
+        $('det-eps').innerHTML='<p style="color:var(--dim)">Aucun épisode disponible.</p>';
+      }
     }
   }
   focus();
@@ -1156,16 +1248,26 @@ function startForceInstall() {
 //  INIT
 // ═══════════════════════════════════════════════════════════════════
 (async function init() {
-  // Show home view
   $('home-view').style.display='flex';
-
-  // Set initial focus state
   S.zone='hero'; S.hBtn=0;
   focus();
 
+  // Restaurer la progression sauvegardée par player.js (méthode VOD)
+  try {
+    const raw = sessionStorage.getItem('pf_last_progress');
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (d.key && d.pct != null) saveProg(d.key, d.pct);
+      if (d.item) pushHist(d.item);
+      sessionStorage.removeItem('pf_last_progress');
+    }
+  } catch {}
+
+  // Pré-charger l'index épisodes en arrière-plan (1 Ko, non bloquant)
+  getEpMap();
+
   await loadContent();
   focus();
-  // Vérification silencieuse au démarrage — popup bloquant si nouvelle version
   checkForUpdate(true);
 })();
 </script>

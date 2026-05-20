@@ -114,7 +114,15 @@ function goNext(){ goEpisode(getCurIdx()+1); }
 
 // ─── Retour vers l'app ─────────────────────────────────────────────────────────
 function goBackToApp(){
-  // history.back() retourne à index.html (la navigation vient de là)
+  // Sauvegarde progression (méthode VOD : pf_last_progress → lu par init() dans index.html)
+  try {
+    const v = document.getElementById("video");
+    const key = resolveUrl();
+    if (v && key && v.duration > 0) {
+      const pct = Math.round(v.currentTime / v.duration * 100);
+      sessionStorage.setItem('pf_last_progress', JSON.stringify({key, pct, item}));
+    }
+  } catch {}
   if(history.length>1) history.back();
   else window.location.href="index.html";
 }
