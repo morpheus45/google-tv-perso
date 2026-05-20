@@ -2,11 +2,12 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="viewport" content="width=1920, initial-scale=1, user-scalable=no">
 <title>Google TV Perso</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 
+/* ─── Calibré pour 1920×1080 — viewport fixé dans le <meta> ────── */
 :root{
   --bg:#0F0F0F;
   --surface:#1A1A1A;
@@ -16,48 +17,52 @@
   --accent:#4285F4;
   --accent-light:#8AB4F8;
   --red:#EA4335;
-  --sw:72px;    /* sidebar width closed */
-  --so:240px;   /* sidebar width open */
-  --ease:.25s ease;
+  --sw:80px;    /* sidebar fermée */
+  --so:260px;   /* sidebar ouverte */
+  --ease:.22s ease;
 }
 
-html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
+html,body{
+  width:1920px;height:1080px;   /* ancre le layout — le WebView scale ensuite */
+  background:var(--bg);color:var(--text);
   font-family:'Google Sans','Roboto','Noto Sans',system-ui,sans-serif;
-  overflow:hidden;user-select:none;-webkit-user-select:none}
+  font-size:16px;               /* base TV : lisible depuis le canapé */
+  overflow:hidden;user-select:none;-webkit-user-select:none
+}
 
 /* ─── APP SHELL ──────────────────────────────────────────────────── */
-#app{display:flex;width:100vw;height:100vh;overflow:hidden;position:relative}
+#app{display:flex;width:1920px;height:1080px;overflow:hidden;position:relative}
 
 /* ─── SIDEBAR ────────────────────────────────────────────────────── */
 #sb{
   width:var(--sw);height:100%;background:transparent;
   display:flex;flex-direction:column;align-items:flex-start;
-  padding:28px 0;transition:width var(--ease),background var(--ease);
+  padding:32px 0;transition:width var(--ease),background var(--ease);
   flex-shrink:0;z-index:10;position:relative;overflow:hidden
 }
-#sb.open{width:var(--so);background:rgba(18,18,18,.97)}
+#sb.open{width:var(--so);background:rgba(15,15,15,.97)}
 
 .sb-logo{
-  display:flex;align-items:center;padding:0 20px;
-  margin-bottom:36px;height:36px;white-space:nowrap;overflow:hidden
+  display:flex;align-items:center;padding:0 22px;
+  margin-bottom:40px;height:40px;white-space:nowrap;overflow:hidden
 }
-.sb-logo svg{width:28px;height:28px;flex-shrink:0}
+.sb-logo svg{width:32px;height:32px;flex-shrink:0}
 .sb-logo span{
-  margin-left:14px;font-size:18px;font-weight:700;color:#fff;
+  margin-left:14px;font-size:19px;font-weight:700;color:#fff;
   opacity:0;transition:opacity var(--ease);white-space:nowrap
 }
 #sb.open .sb-logo span{opacity:1}
 
 .ni{
   display:flex;align-items:center;width:calc(100% - 8px);
-  padding:14px 20px;cursor:pointer;
-  border-radius:0 28px 28px 0;
+  padding:16px 22px;cursor:pointer;
+  border-radius:0 30px 30px 0;
   transition:background var(--ease);outline:none;overflow:hidden;
-  white-space:nowrap;margin-bottom:2px
+  white-space:nowrap;margin-bottom:4px
 }
-.ni .ico{font-size:22px;width:32px;flex-shrink:0;text-align:center}
+.ni .ico{font-size:24px;width:36px;flex-shrink:0;text-align:center}
 .ni .lbl{
-  margin-left:18px;font-size:15px;font-weight:500;
+  margin-left:18px;font-size:16px;font-weight:500;
   opacity:0;transition:opacity var(--ease)
 }
 #sb.open .ni .lbl{opacity:1}
@@ -70,21 +75,21 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 /* ─── TOP BAR ────────────────────────────────────────────────────── */
 #topbar{
   position:absolute;top:0;right:0;left:0;
-  display:flex;align-items:center;padding:22px 40px 0;z-index:5;
+  display:flex;align-items:center;padding:24px 48px 0;z-index:5;
   pointer-events:none
 }
-#topbar .stitle{font-size:20px;font-weight:600;flex:1}
-#clock{font-size:15px;color:var(--dim);font-variant-numeric:tabular-nums}
+#topbar .stitle{font-size:22px;font-weight:600;flex:1}
+#clock{font-size:17px;color:var(--dim);font-variant-numeric:tabular-nums}
 
 /* ─── VIEWS ──────────────────────────────────────────────────────── */
 #home-view{display:flex;flex-direction:column;height:100%;overflow:hidden}
-#grid-view{display:none;flex-direction:column;height:100%;padding-top:72px}
-#search-view{display:none;flex-direction:column;height:100%;padding-top:72px}
-#settings-view{display:none;flex-direction:column;height:100%;padding:80px 40px}
+#grid-view{display:none;flex-direction:column;height:100%;padding-top:80px}
+#search-view{display:none;flex-direction:column;height:100%;padding-top:80px}
+#settings-view{display:none;flex-direction:column;height:100%;padding:88px 48px}
 
 /* ─── HERO ───────────────────────────────────────────────────────── */
 #hero{
-  position:relative;width:100%;height:55vh;min-height:280px;
+  position:relative;width:100%;height:500px;  /* ~46% de 1080px */
   overflow:hidden;flex-shrink:0
 }
 .hbg{
@@ -94,74 +99,74 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .hbg::after{
   content:'';position:absolute;inset:0;
   background:
-    linear-gradient(to right,rgba(15,15,15,.92) 0%,rgba(15,15,15,.55) 55%,rgba(15,15,15,.1) 100%),
-    linear-gradient(to top,rgba(15,15,15,1) 0%,transparent 45%)
+    linear-gradient(to right,rgba(15,15,15,.94) 0%,rgba(15,15,15,.6) 50%,rgba(15,15,15,.08) 100%),
+    linear-gradient(to top,rgba(15,15,15,1) 0%,transparent 50%)
 }
 .hposter{
-  position:absolute;right:80px;bottom:16px;
-  width:140px;height:210px;border-radius:10px;
-  object-fit:cover;box-shadow:0 8px 40px rgba(0,0,0,.85);
+  position:absolute;right:100px;bottom:24px;
+  width:160px;height:240px;border-radius:12px;
+  object-fit:cover;box-shadow:0 12px 48px rgba(0,0,0,.9);
   display:none
 }
 .hinfo{
-  position:absolute;bottom:36px;left:40px;
-  max-width:52%;z-index:2
+  position:absolute;bottom:44px;left:48px;
+  max-width:48%;z-index:2
 }
 .htitle{
-  font-size:32px;font-weight:700;line-height:1.2;
-  margin-bottom:8px;text-shadow:0 2px 8px rgba(0,0,0,.8)
+  font-size:38px;font-weight:700;line-height:1.18;
+  margin-bottom:10px;text-shadow:0 2px 12px rgba(0,0,0,.85)
 }
-.hmeta{font-size:13px;color:var(--dim);margin-bottom:10px}
+.hmeta{font-size:15px;color:var(--dim);margin-bottom:12px}
 .hplot{
-  font-size:14px;line-height:1.55;color:#CCC;max-width:480px;
+  font-size:15px;line-height:1.6;color:#CCC;max-width:560px;
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
-  overflow:hidden;margin-bottom:18px
+  overflow:hidden;margin-bottom:22px
 }
-.hact{display:flex;gap:12px}
+.hact{display:flex;gap:14px}
 
 /* ─── BUTTONS ────────────────────────────────────────────────────── */
 .btn{
-  display:inline-flex;align-items:center;gap:8px;
-  padding:11px 26px;border:none;border-radius:24px;
-  font-size:14px;font-weight:600;cursor:pointer;outline:none;
+  display:inline-flex;align-items:center;gap:9px;
+  padding:13px 32px;border:none;border-radius:26px;
+  font-size:16px;font-weight:600;cursor:pointer;outline:none;
   transition:transform .15s,box-shadow .15s
 }
 .btn-w{background:#FFF;color:#000}
 .btn-g{background:rgba(255,255,255,.18);color:#FFF;border:1.5px solid rgba(255,255,255,.35)}
-.btn.foc,.btn:focus{transform:scale(1.05);box-shadow:0 0 0 3px rgba(255,255,255,.7)}
+.btn.foc,.btn:focus{transform:scale(1.06);box-shadow:0 0 0 3px rgba(255,255,255,.75)}
 
 /* ─── CONTENT SCROLL ─────────────────────────────────────────────── */
-#content{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 0 40px;scrollbar-width:none}
+#content{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 0 32px;scrollbar-width:none}
 #content::-webkit-scrollbar{display:none}
 
 /* ─── ROW ────────────────────────────────────────────────────────── */
-.row{margin-bottom:28px}
-.row-title{font-size:17px;font-weight:600;padding:0 40px;margin-bottom:10px}
-.row-items{display:flex;gap:12px;padding:6px 40px;overflow-x:auto;scrollbar-width:none}
+.row{margin-bottom:24px}
+.row-title{font-size:18px;font-weight:600;padding:0 48px;margin-bottom:10px}
+.row-items{display:flex;gap:14px;padding:6px 48px;overflow-x:auto;scrollbar-width:none}
 .row-items::-webkit-scrollbar{display:none}
 
 /* ─── CARD ───────────────────────────────────────────────────────── */
 .card{
-  flex-shrink:0;width:180px;border-radius:8px;overflow:hidden;
+  flex-shrink:0;width:160px;border-radius:8px;overflow:hidden;
   cursor:pointer;position:relative;transition:transform .2s,box-shadow .2s;
   outline:none;background:var(--card)
 }
-.card img{width:100%;height:243px;object-fit:cover;display:block}
-.card.live img{height:101px}  /* 16:9 */
-.cinfo{padding:8px 10px 10px}
+.card img{width:100%;height:216px;object-fit:cover;display:block}
+.card.live img{height:90px}   /* 16:9 */
+.cinfo{padding:7px 9px 9px}
 .ctitle{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ccat{font-size:11px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card.foc{transform:scale(1.07);box-shadow:0 0 0 3px #FFF,0 10px 30px rgba(0,0,0,.7);z-index:3}
+.card.foc{transform:scale(1.08);box-shadow:0 0 0 3px #FFF,0 12px 36px rgba(0,0,0,.8);z-index:3}
 
 /* ─── GRID VIEW ──────────────────────────────────────────────────── */
-#grid-wrap{display:flex;flex-wrap:wrap;gap:14px;padding:0 40px 40px;overflow-y:auto;flex:1;scrollbar-width:none}
+#grid-wrap{display:flex;flex-wrap:wrap;gap:14px;padding:0 48px 40px;overflow-y:auto;flex:1;scrollbar-width:none}
 #grid-wrap::-webkit-scrollbar{display:none}
 
 /* ─── SEARCH ─────────────────────────────────────────────────────── */
 .search-box{
   display:flex;align-items:center;
   background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.2);
-  border-radius:40px;padding:12px 22px;margin:0 40px 24px;max-width:600px
+  border-radius:40px;padding:13px 24px;margin:0 48px 24px;max-width:640px
 }
 .search-box.foc{border-color:#FFF;background:rgba(255,255,255,.15)}
 #sinput{
@@ -169,18 +174,18 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
   font-size:18px;flex:1
 }
 #sinput::placeholder{color:var(--dim)}
-#sresults{display:flex;flex-wrap:wrap;gap:14px;padding:0 40px;overflow-y:auto;flex:1;scrollbar-width:none}
+#sresults{display:flex;flex-wrap:wrap;gap:14px;padding:0 48px;overflow-y:auto;flex:1;scrollbar-width:none}
 #sresults::-webkit-scrollbar{display:none}
 
 /* ─── SETTINGS ───────────────────────────────────────────────────── */
-.settings-title{font-size:26px;font-weight:700;margin-bottom:32px}
+.settings-title{font-size:28px;font-weight:700;margin-bottom:36px}
 .setting-row{
-  display:flex;align-items:center;padding:16px 20px;
+  display:flex;align-items:center;padding:18px 22px;
   border-radius:12px;cursor:pointer;transition:background .15s;outline:none
 }
 .setting-row.foc{background:rgba(255,255,255,.1)}
-.setting-label{flex:1;font-size:16px}
-.setting-value{font-size:14px;color:var(--dim)}
+.setting-label{flex:1;font-size:17px}
+.setting-value{font-size:15px;color:var(--dim)}
 
 /* ─── DETAIL OVERLAY ─────────────────────────────────────────────── */
 #det{
@@ -190,19 +195,19 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 }
 #det.on{display:flex}
 .det-card{
-  background:#1C1C1C;border-radius:16px;width:640px;max-height:82vh;
-  overflow-y:auto;padding:32px;scrollbar-width:thin;
+  background:#1C1C1C;border-radius:18px;width:680px;max-height:80vh;
+  overflow-y:auto;padding:36px;scrollbar-width:thin;
   scrollbar-color:rgba(255,255,255,.2) transparent
 }
-#det-img{width:100%;height:220px;object-fit:cover;border-radius:10px;margin-bottom:20px}
-#det-title{font-size:24px;font-weight:700;margin-bottom:6px}
-#det-meta{color:var(--dim);font-size:13px;margin-bottom:10px}
-#det-plot{font-size:14px;line-height:1.6;color:#CCC;margin-bottom:20px}
-#det-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.ephead{font-size:13px;color:var(--dim);padding:10px 0 4px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+#det-img{width:100%;height:240px;object-fit:cover;border-radius:12px;margin-bottom:22px}
+#det-title{font-size:26px;font-weight:700;margin-bottom:8px}
+#det-meta{color:var(--dim);font-size:14px;margin-bottom:12px}
+#det-plot{font-size:15px;line-height:1.65;color:#CCC;margin-bottom:22px}
+#det-actions{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.ephead{font-size:13px;color:var(--dim);padding:10px 0 4px;font-weight:600;text-transform:uppercase;letter-spacing:.6px}
 .ep{
-  padding:12px 14px;border-radius:8px;cursor:pointer;
-  font-size:14px;transition:background .15s;outline:none
+  padding:13px 16px;border-radius:8px;cursor:pointer;
+  font-size:15px;transition:background .15s;outline:none
 }
 .ep.foc,.ep:hover{background:rgba(255,255,255,.1)}
 
@@ -210,18 +215,18 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 #loading{
   position:fixed;inset:0;background:var(--bg);
   display:flex;flex-direction:column;align-items:center;
-  justify-content:center;z-index:100;gap:22px
+  justify-content:center;z-index:100;gap:24px
 }
 .spin{
-  width:48px;height:48px;border:4px solid rgba(255,255,255,.1);
+  width:52px;height:52px;border:4px solid rgba(255,255,255,.12);
   border-top-color:var(--accent);border-radius:50%;
   animation:sp .8s linear infinite
 }
 @keyframes sp{to{transform:rotate(360deg)}}
-#loading p{font-size:15px;color:var(--dim)}
+#loading p{font-size:17px;color:var(--dim)}
 
-/* ─── FOCUS RING ON HOME BUTTONS ──── (extra visibility) ────────── */
-#btn-play.foc{box-shadow:0 0 0 3px #FFF,0 0 20px rgba(255,255,255,.3)}
+/* ─── FOCUS RING BOUTONS HERO ────────────────────────────────────── */
+#btn-play.foc{box-shadow:0 0 0 3px #FFF,0 0 22px rgba(255,255,255,.35)}
 #btn-info.foc{box-shadow:0 0 0 3px rgba(255,255,255,.7)}
 </style>
 </head>
