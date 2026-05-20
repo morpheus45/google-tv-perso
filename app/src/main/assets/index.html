@@ -1196,6 +1196,11 @@ window._onUpdateResult = function(data) {
   if (data.upToDate) {
     $('update-val').textContent=`✓ À jour (v${data.currentVersion})`;
     S._updateUrl=null;
+    // Si le popup bloquant était visible, on le ferme : l'install s'est bien passée
+    if (S._forceUpdateActive) {
+      S._forceUpdateActive=false;
+      $('force-update').classList.remove('on');
+    }
   } else if (window.AndroidBridge?.downloadAndInstall) {
     S._updateUrl = data.downloadUrl;
     $('update-val').textContent=`⬆ v${data.latestVersion} disponible — OK pour installer`;
@@ -1218,8 +1223,20 @@ window._onDownloadProgress = function(pct) {
 };
 window.addEventListener('update_install_started', ()=>{
   $('update-val').textContent='Installation en cours…';
-  if (S._forceUpdateActive) $('fu-progress').textContent = 'Installation en cours…';
   S._updateUrl=null;
+  if (S._forceUpdateActive) {
+    $('fu-progress').textContent = 'Installation lancée — veuillez confirmer sur votre TV';
+    // Après l'install, Android ramène parfois l'ancienne WebView :
+    // on propose un bouton pour redémarrer l'appli proprement
+    const btn=$('fu-btn');
+    btn.disabled=false;
+    btn.textContent='🔄 Redémarrer l\'application';
+    btn.onclick=()=>{
+      S._forceUpdateActive=false;
+      if(window.AndroidBridge?.reloadApp) AndroidBridge.reloadApp();
+      else location.reload();
+    };
+  }
 });
 
 function showForceUpdate(data) {
