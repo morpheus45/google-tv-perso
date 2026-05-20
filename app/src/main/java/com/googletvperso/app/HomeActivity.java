@@ -20,6 +20,8 @@ import androidx.core.content.FileProvider;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import android.content.pm.PackageInfo;
+
 import androidx.fragment.app.FragmentActivity;
 
 /**
@@ -297,10 +299,19 @@ public class HomeActivity extends FragmentActivity {
             act.runOnUiThread(() -> act.webView.loadUrl(HomeActivity.HOME_URL));
         }
 
+        /** versionCode lu depuis le PackageManager — pas de dépendance BuildConfig */
+        private int getVersionCode() {
+            try {
+                PackageInfo info = act.getPackageManager()
+                    .getPackageInfo(act.getPackageName(), 0);
+                return info.versionCode;
+            } catch (Exception e) { return 1; }
+        }
+
         /** Version de l'APK installée */
         @JavascriptInterface
         public String getApkVersion() {
-            return String.valueOf(BuildConfig.VERSION_CODE);
+            return String.valueOf(getVersionCode());
         }
 
         /** Vérifie les mises à jour GitHub de façon asynchrone.
@@ -315,7 +326,7 @@ public class HomeActivity extends FragmentActivity {
                     conn = (java.net.HttpURLConnection) u.openConnection();
                     conn.setConnectTimeout(10000);
                     conn.setReadTimeout(10000);
-                    conn.setRequestProperty("User-Agent", "GoogleTVPerso/" + BuildConfig.VERSION_CODE);
+                    conn.setRequestProperty("User-Agent", "GoogleTVPerso/" + getVersionCode());
                     conn.setRequestProperty("Accept", "application/vnd.github.v3+json");
                     if (conn.getResponseCode() != 200) { dispatchUpdateResult("null"); return; }
                     java.util.Scanner sc = new java.util.Scanner(conn.getInputStream(), "UTF-8")
@@ -331,11 +342,11 @@ public class HomeActivity extends FragmentActivity {
                         dlUrl = assets.getJSONObject(0).getString("browser_download_url");
                     }
                     JSONObject result = new JSONObject();
-                    result.put("currentVersion", BuildConfig.VERSION_CODE);
+                    result.put("currentVersion", getVersionCode());
                     result.put("latestVersion", latest);
                     result.put("tagName", tagName);
                     result.put("downloadUrl", dlUrl);
-                    result.put("upToDate", latest <= BuildConfig.VERSION_CODE);
+                    result.put("upToDate", latest <= getVersionCode());
                     dispatchUpdateResult(result.toString());
                 } catch (Exception e) {
                     dispatchUpdateResult("null");

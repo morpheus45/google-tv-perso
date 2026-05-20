@@ -774,12 +774,11 @@ function select() {
     if (r==='set-reload') { $('loading').style.display='flex'; loadContent(); }
     else if (r==='set-cache') { if(window.AndroidBridge) AndroidBridge.reloadApp(); else location.reload(); }
     else if (r==='set-update') {
-      if (S._updateUrl) {
+      if (S._updateUrl && window.AndroidBridge?.downloadAndInstall) {
         $('update-val').textContent = 'Téléchargement en cours…';
         AndroidBridge.downloadAndInstall(S._updateUrl);
       } else {
-        $('update-val').textContent = 'Vérification…';
-        if (window.AndroidBridge?.checkUpdateAsync) AndroidBridge.checkUpdateAsync();
+        checkForUpdate();
       }
     }
     return;
@@ -837,12 +836,9 @@ function gotoSection(sec) {
   if (sec==='settings') {
     $('settings-view').style.display='flex';
     S.zone='settings'; S.setIdx=0;
-    // Afficher la version et vérifier les mises à jour
     const ver = window.AndroidBridge?.getApkVersion?.() || '?';
     $('about-val').textContent = `Google TV Perso v${ver}`;
-    $('update-val').textContent = 'Vérification…';
-    S._updateUrl = null;
-    if (window.AndroidBridge?.checkUpdateAsync) AndroidBridge.checkUpdateAsync();
+    checkForUpdate();
     focus(); return;
   }
 
@@ -1000,22 +996,64 @@ $('set-update').onclick=()=>{
   else { $('update-val').textContent='Vérification…'; if(window.AndroidBridge?.checkUpdateAsync) AndroidBridge.checkUpdateAsync(); }
 };
 
-// ── Callbacks de mise à jour (appelés par le bridge Java) ──────────
+// ── Vérification des mises à jour ──────────────────────────────────
+// Fonctionne avec ou sans AndroidBridge.checkUpdateAsync (vieil APK)
+async function checkForUpdate() {
+  $('update-val').textContent = 'Vérification…';
+  S._updateUrl = null;
+
+  if (window.AndroidBridge?.checkUpdateAsync) {
+    // Nouvel APK : le bridge fait l'appel réseau en thread Java,
+    // résultat via callback window._onUpdateResult()
+    AndroidBridge.checkUpdateAsync();
+    return;
+  }
+
+  // Fallback JS (vieil APK sans checkUpdateAsync) :
+  // fetch direct GitHub API — CORS autorisé par GitHub
+  try {
+    const r = await fetch(
+      'https://api.github.com/repos/morpheus45/google-tv-perso/releases/latest',
+      { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+    );
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const json = await r.json();
+    const parts = json.tag_name.replace('v','').split('.');
+    const latestVersion = parseInt(parts[parts.length - 1], 10);
+    const currentVersion = parseInt(window.AndroidBridge?.getApkVersion?.() || '0', 10);
+    const dlUrl = json.assets?.[0]?.browser_download_url || '';
+    window._onUpdateResult({ currentVersion, latestVersion,
+      tagName: json.tag_name, downloadUrl: dlUrl,
+      upToDate: latestVersion <= currentVersion });
+  } catch(e) {
+    $('update-val').textContent = 'Erreur de connexion';
+  }
+}
+
+// ── Callbacks de mise à jour (appelés par le bridge Java OU par checkForUpdate) ─
 window._onUpdateResult = function(data) {
   if (!data) { $('update-val').textContent='Erreur de connexion'; S._updateUrl=null; return; }
   if (data.upToDate) {
     $('update-val').textContent=`✓ À jour (v${data.currentVersion})`;
     S._updateUrl=null;
-  } else {
-    $('update-val').textContent=`⬆ Installer v${data.latestVersion} — Appuyer pour télécharger`;
+  } else if (window.AndroidBridge?.downloadAndInstall) {
+    // Nouvel APK : téléchargement + installation automatique
+    $('update-val').textContent=`⬆ v${data.latestVersion} disponible — OK pour installer`;
     S._updateUrl=data.downloadUrl;
+  } else {
+    // Vieil APK sans downloadAndInstall : affiche l'info, l'utilisateur installe manuellement
+    $('update-val').textContent=`⬆ v${data.latestVersion} disponible — Installer manuellement`;
+    S._updateUrl=null;
+    if (window.AndroidBridge?.showToast) {
+      AndroidBridge.showToast('Nouvelle version v'+data.latestVersion+' sur github.com/morpheus45/google-tv-perso');
+    }
   }
 };
 window._onDownloadProgress = function(pct) {
   $('update-val').textContent=`Téléchargement : ${pct}%`;
 };
 window.addEventListener('update_install_started', ()=>{
-  $('update-val').textContent='Installation en cours… La TV va redémarrer l\'app.';
+  $('update-val').textContent='Installation en cours…';
   S._updateUrl=null;
 });
 
