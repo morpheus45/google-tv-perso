@@ -38,20 +38,19 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # ── 5. Générer le debug keystore (requis pour signer l'APK) ───
-      - name: Generate debug keystore
+      # ── 5. Restaurer le keystore de release stable ────────────────
+      - name: Restore release keystore
         run: |
-          mkdir -p $HOME/.android
-          keytool -genkeypair -v \
-            -keystore $HOME/.android/debug.keystore \
-            -alias androiddebugkey \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US"
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "${{ github.workspace }}/release.keystore"
 
-      # ── 6. Build Release APK ───────────────────────────────────────
+      # ── 6. Build Release APK (signé avec le keystore stable) ──────
       - name: Build Release APK
         run: ./gradlew assembleRelease --no-daemon -PversionCode=${{ github.run_number }}
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       # ── 7. Renommer l'APK ─────────────────────────────────────────
       - name: Rename APK
