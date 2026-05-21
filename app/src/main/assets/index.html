@@ -617,6 +617,43 @@ const U    = 'E5G5E39';
 const P    = 'RE88M4E';
 
 // ═══════════════════════════════════════════════════════════════════
+//  TITLE / QUALITY HELPERS  (portés depuis VOD/app.js)
+// ═══════════════════════════════════════════════════════════════════
+function cleanTitle(t) {
+  if (!t) return '';
+  let s = String(t);
+  s = s.replace(/^(FR|SRS|EN|VOD|SERIE)\s*[-|:]\s*/i, '');
+  s = s.replace(/\s*(?:group-title|tvg-\w+)\s*=\s*"[^"]*"/gi, '');
+  s = s.replace(/\.(mkv|mp4|ts|m3u8|avi|mov)$/i, '');
+  s = s.replace(/\s*\(\d{4}\)\s*$/, '');
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+function cleanEpTitle(raw, seriesTitle) {
+  if (!raw) return '';
+  let s = String(raw);
+  const re = new RegExp('^' + seriesTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[-–]\\s*S\\d+E\\d+\\s*[-–]\\s*', 'i');
+  s = s.replace(re, '');
+  s = s.replace(/^S\d+E\d+\s*[-–]\s*/i, '');
+  return cleanTitle(s) || '';
+}
+
+function inferQuality(src) {
+  const t = String(src || '').toLowerCase();
+  if (/\b(4k|uhd|2160p?)\b/.test(t)) return '4K';
+  if (/\b(fhd|full[\s-]?hd|1080p?|hd|720p?)\b/.test(t)) return 'HD';
+  if (/\b(sd|480p?|360p?)\b/.test(t)) return 'SD';
+  return '';
+}
+
+function secureUrl(url) {
+  if (!url) return url;
+  if (location.protocol === 'https:' && /^http:\/\//i.test(url))
+    return url.replace(/^http:\/\//i, 'https://');
+  return url;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════════════════
 const S = {
@@ -633,7 +670,9 @@ const S = {
   setIdx: 0,
   rows: [],
   heroItem: null,
-  allItems: [],
+  allItems: [],    // tous (vod + séries)
+  allVod: [],      // films seulement
+  allSeries: [],   // séries seulement
   liveItems: [],
   detItem: null,
   detEps: [],
@@ -646,6 +685,7 @@ const S = {
   panelOpen: false,
   panelItem: null,
   panelIsVod: false,
+  panelDirectOnly: false,
   panelZone: 'acts',  // 'acts' | 'tabs' | 'eps'
   panelActIdx: 0,     // 0=play, 1=fav
   panelTabIdx: 0,
@@ -705,185 +745,362 @@ function storeGet(k,fb){ try{ const r=localStorage.getItem(k); return r?JSON.par
 function storeSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} }
 
 // ═══════════════════════════════════════════════════════════════════
-//  FAVORITES
+//  FAVORITES / HISTORY / PROGRESS
 // ═══════════════════════════════════════════════════════════════════
-function getFavs(){ return storeGet(STORE.favs,[]); }
-function favKey(item){ return (item.series_id?'s_':'v_')+(item.series_id||item.stream_id||item.url||item.title); }
-function isFav(item){ return getFavs().some(x=>x.key===favKey(item)); }
-function toggleFav(item){
-  const favs=getFavs(); const key=favKey(item);
-  const idx=favs.findIndex(x=>x.key===key);
-  if(idx>=0) favs.splice(idx,1); else favs.unshift({key,item,at:Date.now()});
-  storeSet(STORE.favs,favs.slice(0,500));
-  return getFavs().some(x=>x.key===key);
+function getFavs() { return storeGet(STORE.favs, []); }
+
+// Clé stable compatible ancien et nouveau schéma
+function favKey(item) {
+  if (item.series_id) return 's_' + item.series_id;
+  if (item.stream_id) return 'v_' + item.stream_id;
+  return 'u_' + (item.url || item.title || '');
 }
 
-let _cacheP=null;
-function getProg(){ if(!_cacheP) _cacheP=storeGet(STORE.progress,{}); return _cacheP; }
-function saveProg(key,pct){ const p=getProg(); p[key]={pct,ts:Date.now()}; storeSet(STORE.progress,p); }
+function isFav(item) { return getFavs().some(x => x.key === favKey(item)); }
 
-function getHist(){ return storeGet(STORE.history,[]); }
-function histKey(item){ return item.series_id?'series_'+item.series_id:item.url||item.title; }
-function pushHist(item){
-  const key=histKey(item);
-  const h=getHist().filter(x=>x.key!==key);
-  h.unshift({key,item,at:Date.now()});
-  storeSet(STORE.history,h.slice(0,100));
+function toggleFav(item) {
+  const favs = getFavs();
+  const key  = favKey(item);
+  const idx  = favs.findIndex(x => x.key === key);
+  if (idx >= 0) favs.splice(idx, 1);
+  else favs.unshift({ key, item, at: Date.now() });
+  storeSet(STORE.favs, favs.slice(0, 500));
+  return favs.some(x => x.key === key);
+}
+
+let _cacheP = null;
+function getProg() {
+  if (!_cacheP) _cacheP = storeGet(STORE.progress, {});
+  return _cacheP;
+}
+function saveProg(key, pct) {
+  const p = getProg(); p[key] = { pct, ts: Date.now() };
+  storeSet(STORE.progress, p);
+  _cacheP = p;
+}
+
+function getHist() { return storeGet(STORE.history, []); }
+
+function histKey(item) {
+  if (item.series_id) return 'series_' + item.series_id;
+  if (item.stream_id) return 'vid_' + item.stream_id;
+  return item.url || item.title || '';
+}
+
+function pushHist(item) {
+  const key = histKey(item);
+  const h   = getHist().filter(x => x.key !== key);
+  h.unshift({ key, item, at: Date.now() });
+  storeSet(STORE.history, h.slice(0, 100));
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  EPISODES MAP
+//  EPISODES MAP + CHUNKS  (portés depuis VOD/app.js)
 // ═══════════════════════════════════════════════════════════════════
-let _epMap=null, _epMapPromise=null;
-const _loadedChunks={};
-const epDb={};
+let _epMap = null, _epMapPromise = null;
+const _loadedChunks = {};
+const epDb = {};
+// Cache des épisodes déjà chargés (clé = cacheKey série)
+const _epCache = {};
 
-async function getEpMap(){
-  if(_epMap) return _epMap;
-  if(_epMapPromise) return _epMapPromise;
-  _epMapPromise=loadJSON(GH+'episodes_map.json').then(m=>{ _epMap=m||{}; return _epMap; });
+async function getEpMap() {
+  if (_epMap) return _epMap;
+  if (_epMapPromise) return _epMapPromise;
+  _epMapPromise = loadJSON(GH + 'episodes_map.json').then(m => {
+    _epMap = m || {};
+    return _epMap;
+  });
   return _epMapPromise;
 }
-async function ensureEpDb(seriesId){
-  const map=await getEpMap();
-  const chunkNum=seriesId?map[String(seriesId)]:null;
-  if(!chunkNum) return false;
-  if(!_loadedChunks[chunkNum]){
-    _loadedChunks[chunkNum]=loadJSON(GH+`episodes_part${chunkNum}.json`).then(chunk=>{
-      if(chunk&&typeof chunk==='object') Object.assign(epDb,chunk);
+
+async function ensureEpDb(seriesId) {
+  const map = await getEpMap();
+  const chunkNum = seriesId ? map[String(seriesId)] : null;
+  if (!chunkNum) return false;
+  if (!_loadedChunks[chunkNum]) {
+    _loadedChunks[chunkNum] = loadJSON(GH + `episodes_part${chunkNum}.json`).then(chunk => {
+      if (chunk && typeof chunk === 'object') Object.assign(epDb, chunk);
     });
   }
   await _loadedChunks[chunkNum];
   return true;
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  CONTENT LOADING
-// ═══════════════════════════════════════════════════════════════════
-function stripLang(t) { return t.replace(/^(FR|EN|ES|AR|DE|IT|TR)\s*[-–]\s*/i,'').trim(); }
-function cleanCat(c)  { return (c||'').replace(/^(SRS|VOD)\s*\|\s*/i,'').trim(); }
-
-function normalise(item) {
-  if (!item?.title && !item?.name) return null;
-  const rawTitle = item.title || item.name || '';
-  if (/\bvostfr\b/i.test(rawTitle)) return null;
-  const url = item.stream_url || item.url || '';
-  const sid = item.series_id || null;
-  const vid = item.stream_id  || null;
-  const category = item.category_name || item.category || '';
-  return {
-    title:     stripLang(item.title || item.name || ''),
-    image:     item.stream_icon || item.image || item.logo || '',
-    category:  cleanCat(category),
-    plot:      item.plot || item.description || '',
-    url,
-    series_id: sid,
-    stream_id: vid,
-    isLive:    false,
-  };
+// ─── Xtream URL helpers ───────────────────────────────────────────
+function parseXtreamCreds(apiUrl) {
+  try {
+    const p = new URL(apiUrl);
+    return { base: p.origin, username: p.searchParams.get('username') || '', password: p.searchParams.get('password') || '' };
+  } catch { return null; }
 }
 
+function buildEpUrl(seriesIdOrApiUrl, ep) {
+  // appelé depuis openPanel (TV) avec seriesId simple → reconstruit l'URL goldenlink
+  if (ep.url && !ep.url.includes('player_api') && !ep.url.includes('get_series_info'))
+    return ep.url;
+  const ext = ep.container_extension || ep.ext || 'mkv';
+  if (ep.id && !String(ep.id).includes('-'))
+    return `http://goldenlink.live/series/${U}/${P}/${ep.id}.${ext}`;
+  return '';
+}
+
+// Charge les épisodes d'une série (epDb chunks → fallback API)
+async function loadEpisodes(item) {
+  const sid = String(item.series_id || item.id || '');
+  const cacheKey = `s_${sid}_${item.title}`;
+  if (_epCache[cacheKey]) return _epCache[cacheKey];
+
+  // 1. Base pré-générée
+  await ensureEpDb(sid);
+  if (sid && epDb[sid]) {
+    const db = epDb[sid];
+    const seasonsMap = {};
+    Object.entries(db.seasons || {}).forEach(([sk, epList]) => {
+      seasonsMap[String(sk)] = epList.map(ep => ({
+        id                 : ep.id,
+        episode_num        : ep.episode_num,
+        season             : ep.season,
+        title              : cleanEpTitle(ep.title || '', item.title) || `Épisode ${ep.episode_num}`,
+        url                : ep.url,
+        stream_url         : ep.url,
+        container_extension: ep.ext || 'mkv',
+        duration           : ep.duration || '',
+        plot               : ep.plot || '',
+        thumb              : ep.thumb || ''
+      }));
+    });
+    const seasonsMeta = (db.seasonsMeta || []).map(s => ({
+      num: s.num, name: s.name || `Saison ${s.num}`, cover: s.cover || '', count: s.count || 0
+    }));
+    if (db.meta) {
+      if (!item.plot  && db.meta.plot)  item.plot  = db.meta.plot;
+      if (!item.image && db.meta.cover) item.image = db.meta.cover;
+    }
+    const result = { seasonsMap, seasonsMeta };
+    _epCache[cacheKey] = result;
+    return result;
+  }
+
+  // 2. Fallback API Xtream
+  const apiUrl = `http://goldenlink.live/player_api.php?username=${U}&password=${P}&action=get_series_info&series_id=${sid}`;
+  let data = null;
+  if (typeof window.AndroidBridge?.fetchJson === 'function') {
+    try { const raw = window.AndroidBridge.fetchJson(apiUrl); if (raw) data = JSON.parse(raw); } catch {}
+  }
+  if (!data) {
+    try {
+      const ctrl = new AbortController();
+      const tid  = setTimeout(() => ctrl.abort(), 12000);
+      const r = await fetch(apiUrl, { signal: ctrl.signal });
+      clearTimeout(tid);
+      data = r.ok ? await r.json() : null;
+    } catch { data = null; }
+  }
+  if (!data) return { seasonsMap: {}, seasonsMeta: [], directOnly: true };
+
+  const seasonsMap = {};
+  const rawEps = data.episodes;
+  if (rawEps && typeof rawEps === 'object') {
+    Object.entries(rawEps).forEach(([sk, epList]) => {
+      if (!Array.isArray(epList)) return;
+      seasonsMap[String(sk)] = epList
+        .filter(ep => ep && (ep.id || ep.episode_num))
+        .map(ep => {
+          const url = buildEpUrl(sid, ep);
+          return {
+            id: ep.id, episode_num: Number(ep.episode_num) || 1,
+            season: Number(ep.season || sk),
+            title: cleanEpTitle(ep.title || ep.name || '', item.title) || `Épisode ${ep.episode_num}`,
+            url, stream_url: url,
+            container_extension: ep.container_extension || 'mkv',
+            duration: ep.info?.duration || '', plot: ep.info?.plot || '', thumb: ep.info?.movie_image || ''
+          };
+        })
+        .sort((a, b) => a.episode_num - b.episode_num);
+    });
+  }
+  let seasonsMeta = [];
+  if (Array.isArray(data.seasons)) {
+    seasonsMeta = data.seasons.filter(s => s.season_number > 0)
+      .sort((a, b) => a.season_number - b.season_number)
+      .map(s => ({ num: s.season_number, name: s.name || `Saison ${s.season_number}`, cover: s.cover_big || s.cover || '', count: s.episode_count || 0 }));
+  }
+  if (data.info) {
+    if (!item.plot)  item.plot  = data.info.plot || data.info.description || '';
+    if (!item.image) item.image = data.info.cover || data.info.movie_image || '';
+  }
+  const result = { seasonsMap, seasonsMeta };
+  _epCache[cacheKey] = result;
+  return result;
+}
+
+// ─── Fetch synopsis VOD depuis API Xtream ─────────────────────────
+async function fetchVodPlot(item) {
+  const vodId = item.stream_id || item.id || '';
+  if (!vodId) return null;
+  const apiUrl = `http://goldenlink.live/player_api.php?username=${U}&password=${P}&action=get_vod_info&vod_id=${vodId}`;
+  let json = null;
+  if (typeof window.AndroidBridge?.fetchJson === 'function') {
+    try { const raw = window.AndroidBridge.fetchJson(apiUrl); if (raw) json = JSON.parse(raw); } catch {}
+  }
+  if (!json) {
+    try {
+      const ctrl = new AbortController();
+      const tid  = setTimeout(() => ctrl.abort(), 8000);
+      const r = await fetch(apiUrl, { signal: ctrl.signal });
+      clearTimeout(tid);
+      if (r.ok) json = await r.json();
+    } catch {}
+  }
+  return json?.info?.plot || json?.info?.description || null;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  CONTENT LOADING  (logique VOD/app.js)
+// ═══════════════════════════════════════════════════════════════════
 function extractArr(json) {
   if (!json) return [];
   if (Array.isArray(json)) return json;
-  return json.items || json.streams || json.movies || json.series || [];
+  for (const k of ['items','streams','channels','movies','series','vod']) {
+    if (Array.isArray(json[k])) return json[k];
+  }
+  return [];
+}
+
+function normalise(raw) {
+  if (!raw) return null;
+  const rawTitle = raw.title || raw.name || '';
+  if (!rawTitle) return null;
+  if (/\bvostfr\b/i.test(rawTitle)) return null;
+  const url      = raw.stream_url || raw.url || '';
+  const sid      = raw.series_id  || null;
+  const vid      = raw.stream_id  || null;
+  const category = raw.category_name || raw.category || 'Autre';
+  return {
+    title     : cleanTitle(rawTitle),
+    image     : raw.stream_icon || raw.image || raw.cover || raw.poster || '',
+    category  : cleanTitle(category),
+    plot      : raw.plot || raw.description || raw.overview || '',
+    url,
+    series_id : sid,
+    stream_id : vid,
+    quality   : inferQuality([rawTitle, category].join(' ')),
+    added     : raw.added || 0,
+    isLive    : false,
+  };
 }
 
 function shuffle(a) {
-  const b=[...a];
-  for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}
+  const b = [...a];
+  for (let i = b.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [b[i], b[j]] = [b[j], b[i]];
+  }
   return b;
 }
 
 async function loadContent() {
   try {
     const [vodJson, seriesJson, liveJson] = await Promise.all([
-      loadJSON(GH+'vod.json'),
-      loadJSON(GH+'series.json'),
-      loadJSON(GH+'live.json'),
+      loadJSON(GH + 'vod.json'),
+      loadJSON(GH + 'series.json'),
+      loadJSON(GH + 'live.json'),
     ]);
 
-    const all = [];
-    const byCat = {};
-    const seen = new Set();
+    // ── VOD & Séries ────────────────────────────────────────────
+    const allVod    = [];
+    const allSeries = [];
+    const byCat     = {};
+    const seen      = new Set();
 
-    function addItem(raw) {
+    function addItem(raw, isSeries) {
       const item = normalise(raw);
       if (!item) return;
-      if (seen.has(item.title)) return;
-      seen.add(item.title);
-      all.push(item);
+      const key = item.title + '|' + (item.series_id || item.stream_id || '');
+      if (seen.has(key)) return;
+      seen.add(key);
+      if (isSeries) { item.series_id = item.series_id || raw.series_id || raw.id || null; allSeries.push(item); }
+      else allVod.push(item);
       const cat = item.category || 'Autres';
-      (byCat[cat] = byCat[cat]||[]).push(item);
+      (byCat[cat] = byCat[cat] || []).push(item);
     }
 
-    extractArr(vodJson).forEach(addItem);
-    extractArr(seriesJson).forEach(addItem);
+    extractArr(vodJson).forEach(r => addItem(r, false));
+    extractArr(seriesJson).forEach(r => addItem(r, true));
 
-    S.allItems = all;
+    S.allItems   = [...allVod, ...allSeries];
+    S.allVod     = allVod;
+    S.allSeries  = allSeries;
 
+    // ── Live ────────────────────────────────────────────────────
     const liveArr = extractArr(liveJson);
     if (liveArr.length) {
-      S.liveItems = liveArr.map((ch,i)=>({
-        title:    ch.title||ch.name||'Sans titre',
-        image:    ch.stream_icon||ch.image||'',
-        category: ch.category_name||ch.category||'Live TV',
-        plot:     ch.plot||'',
-        url:      ch.stream_url||ch.url||`http://goldenlink.live/live/${U}/${P}/${ch.stream_id||i}.ts`,
-        stream_id:ch.stream_id||ch.id||String(i),
-        isLive:   true,
+      S.liveItems = liveArr.map((ch, i) => ({
+        title    : ch.title || ch.name || 'Sans titre',
+        image    : ch.stream_icon || ch.image || '',
+        category : ch.category_name || ch.category || 'Live TV',
+        plot     : ch.plot || '',
+        url      : ch.stream_url || ch.url || `http://goldenlink.live/live/${U}/${P}/${ch.stream_id || i}.ts`,
+        stream_id: ch.stream_id || ch.id || String(i),
+        isLive   : true,
       }));
     } else {
       const apiLive = await bridgeFetch(`${API}?username=${U}&password=${P}&action=get_live_streams`);
       if (Array.isArray(apiLive)) {
-        S.liveItems = apiLive.map(ch=>({
-          title:    ch.name,
-          image:    ch.stream_icon||'',
-          category: ch.category_name||'Live TV',
-          plot:     '',
-          url:      `http://goldenlink.live/live/${U}/${P}/${ch.stream_id}.ts`,
-          stream_id:ch.stream_id,
-          isLive:   true,
+        S.liveItems = apiLive.map(ch => ({
+          title    : ch.name,
+          image    : ch.stream_icon || '',
+          category : ch.category_name || 'Live TV',
+          plot     : '',
+          url      : `http://goldenlink.live/live/${U}/${P}/${ch.stream_id}.ts`,
+          stream_id: ch.stream_id,
+          isLive   : true,
         }));
       }
     }
 
+    // ── Rows accueil ─────────────────────────────────────────────
     const rows = [];
-    const pool = all.filter(i=>i.image);
+    const pool = S.allItems.filter(i => i.image);
     S.heroPool = pool;
 
-    const histItems = getHist().slice(0,15).map(h=>h.item).filter(Boolean);
-    if (histItems.length) rows.push({title:'▶ Continuer à regarder',items:histItems});
+    // "Continuer à regarder" — depuis l'historique
+    const histItems = getHist().slice(0, 15).map(h => h.item).filter(Boolean);
+    if (histItems.length) rows.push({ title: '▶ Continuer à regarder', items: histItems });
 
-    const favItems = getFavs().slice(0,30).map(f=>f.item).filter(Boolean);
-    if (favItems.length) rows.push({title:'♥ Mes favoris',items:favItems});
+    // "Mes favoris"
+    const favItems = getFavs().slice(0, 30).map(f => f.item).filter(Boolean);
+    if (favItems.length) rows.push({ title: '♥ Mes favoris', items: favItems });
 
-    if (pool.length) rows.push({title:'Recommandé pour vous',items:shuffle(pool).slice(0,20)});
+    // "Recommandé"
+    if (pool.length) rows.push({ title: 'Recommandé pour vous', items: shuffle(pool).slice(0, 20) });
 
+    // Par catégorie (films + séries mélangés)
     Object.entries(byCat)
-      .sort((a,b)=>b[1].length-a[1].length)
-      .filter(([,v])=>v.length>=2)
-      .slice(0,20)
-      .forEach(([cat,items])=>rows.push({title:cat,items:items.slice(0,40)}));
+      .sort((a, b) => b[1].length - a[1].length)
+      .filter(([, v]) => v.length >= 2)
+      .slice(0, 20)
+      .forEach(([cat, items]) => rows.push({ title: cat, items: items.slice(0, 40) }));
 
+    // "TV en Direct"
     if (S.liveItems.length) {
-      const grouped=groupLiveItems(S.liveItems);
-      rows.push({title:'TV en Direct',items:grouped.slice(0,30),isLive:true});
+      const grouped = groupLiveItems(S.liveItems);
+      rows.push({ title: 'TV en Direct', items: grouped.slice(0, 30), isLive: true });
     }
 
     S.rows = rows;
-    if (S.heroPool.length) setHero(S.heroPool[Math.floor(Math.random()*Math.min(S.heroPool.length,20))]);
+    if (S.heroPool.length) setHero(S.heroPool[Math.floor(Math.random() * Math.min(S.heroPool.length, 20))]);
     renderRows(rows);
 
     clearInterval(S.heroTimer);
-    S.heroTimer = setInterval(()=>{
-      if (S.zone!=='hero') return;
-      const p=S.heroPool;
-      if (p.length) setHero(p[Math.floor(Math.random()*Math.min(p.length,20))]);
+    S.heroTimer = setInterval(() => {
+      if (S.zone !== 'hero') return;
+      const p = S.heroPool;
+      if (p.length) setHero(p[Math.floor(Math.random() * Math.min(p.length, 20))]);
     }, 9000);
 
   } finally {
-    $('loading').style.display='none';
+    $('loading').style.display = 'none';
   }
 }
 
@@ -949,32 +1166,42 @@ function renderRows(rows) {
   });
 }
 
-function mkCard(item,ri,ci,isLive) {
-  const c=document.createElement('div');
-  c.className='card'+(isLive?' live':'');
-  c.dataset.ri=ri; c.dataset.ci=ci;
-  const img=document.createElement('img');
-  img.src=item.image||BLANK;
-  img.loading='lazy'; img.alt=item.title;
-  img.onerror=()=>{ img.src=BLANK; img.onerror=null; };
-  const info=document.createElement('div'); info.className='cinfo';
-  const t=document.createElement('div'); t.className='ctitle'; t.textContent=item.title;
-  const ca=document.createElement('div'); ca.className='ccat'; ca.textContent=item.category||(isLive?'Live':'');
-  info.append(t,ca); c.append(img,info);
-  const badge=document.createElement('span');
-  badge.className='ctype-badge';
-  if (isLive) {
-    badge.textContent='LIVE'; badge.classList.add('ctype-live');
+const BLANK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='243'%3E%3Crect fill='%23111' width='180' height='243'/%3E%3Ctext x='90' y='121' fill='%23333' font-size='48' text-anchor='middle' dy='.35em'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E";
+
+function mkCard(item, ri, ci, isLive) {
+  const lv = isLive || item.isLive || false;
+  const c  = document.createElement('div');
+  c.className    = 'card' + (lv ? ' live' : '');
+  c.dataset.ri   = ri;
+  c.dataset.ci   = ci;
+
+  // image — supporte les deux champs: item.image (normalise) et item.stream_icon (raw)
+  const imgSrc = item.image || item.stream_icon || '';
+  const img    = document.createElement('img');
+  img.src       = imgSrc || BLANK;
+  img.loading   = 'lazy';
+  img.alt       = item.title;
+  img.onerror   = () => { img.src = BLANK; img.onerror = null; };
+
+  const info = document.createElement('div'); info.className = 'cinfo';
+  const t    = document.createElement('div'); t.className = 'ctitle'; t.textContent = item.title;
+  const ca   = document.createElement('div'); ca.className = 'ccat';
+  ca.textContent = item.category || item.category_name || (lv ? 'Live' : '');
+  info.append(t, ca);
+  c.append(img, info);
+
+  const badge = document.createElement('span');
+  badge.className = 'ctype-badge';
+  if (lv) {
+    badge.textContent = 'LIVE'; badge.classList.add('ctype-live');
   } else if (item.series_id) {
-    badge.textContent='SÉRIE'; badge.classList.add('ctype-serie');
+    badge.textContent = 'SÉRIE'; badge.classList.add('ctype-serie');
   } else {
-    badge.textContent='FILM'; badge.classList.add('ctype-film');
+    badge.textContent = 'FILM'; badge.classList.add('ctype-film');
   }
   c.appendChild(badge);
   return c;
 }
-
-const BLANK="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='243'%3E%3Crect fill='%23111' width='180' height='243'/%3E%3Ctext x='90' y='121' fill='%23333' font-size='48' text-anchor='middle' dy='.35em'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E";
 
 // ═══════════════════════════════════════════════════════════════════
 //  RENDER GRID
@@ -1020,12 +1247,6 @@ function focus() {
     const cards=$('grid-wrap').querySelectorAll('.card');
     const c=cards[S.gridIdx];
     if (c) { c.classList.add('foc'); c.scrollIntoView({inline:'nearest',block:'nearest'}); }
-    return;
-  }
-  if (z==='det') {
-    const eps=qAll('.ep');
-    const e=eps[S.detEpIdx];
-    if (e) { e.classList.add('foc'); e.scrollIntoView({block:'nearest'}); }
     return;
   }
   if (z==='settings') {
@@ -1142,13 +1363,6 @@ function nav(dir) {
     focus(); return;
   }
 
-  if (z==='det') {
-    const eps=qAll('.ep');
-    if (dir==='u') S.detEpIdx=Math.max(0,S.detEpIdx-1);
-    else if (dir==='d') S.detEpIdx=Math.min(eps.length-1,S.detEpIdx+1);
-    focus(); return;
-  }
-
   if (z==='settings') {
     if (dir==='u') {
       if (S.setIdx===0) { S.zone='nav'; S.navIdx=NAV_ITEMS.indexOf('settings'); }
@@ -1167,13 +1381,16 @@ function nav(dir) {
 // ═══════════════════════════════════════════════════════════════════
 //  SELECT
 // ═══════════════════════════════════════════════════════════════════
-function activateItem(item){
-  if(!item) return;
-  if(item.isLive){
-    if(item._variants&&item._variants.length>1) openLivePicker(item);
-    else playItem(item._variants?.[0]?.item||item);
-  } else if(item.series_id){ openPanel(item); }
-  else { openVodPanel(item); }
+function activateItem(item) {
+  if (!item) return;
+  if (item.isLive) {
+    if (item._variants && item._variants.length > 1) openLivePicker(item);
+    else playItem(item._variants?.[0]?.item || item);
+  } else if (item.series_id) {
+    openPanel(item);
+  } else {
+    openVodPanel(item);
+  }
 }
 
 function select() {
@@ -1205,11 +1422,7 @@ function select() {
     activateItem(item);
     return;
   }
-  if (z==='det') {
-    const ep=S.detEps[S.detEpIdx];
-    if (ep) playEp(ep);
-    return;
-  }
+  // zone 'det' supprimée — les épisodes passent par le panneau series
   if (z==='settings') {
     const r=SET_ROWS[S.setIdx];
     if (r==='set-reload') { $('loading').style.display='flex'; loadContent(); }
@@ -1232,12 +1445,11 @@ function select() {
 function back() {
   if (S._forceUpdateActive) return;
   if (S.panelOpen) { closePanel(); return; }
-  if ($('det').classList.contains('on')) { closeDet(); return; }
-  if (S.zone==='row') { S.zone='hero'; S.hBtn=0; focus(); return; }
-  if (S.zone==='grid'||S.zone==='settings'||S.zone==='search') {
+  if (S.zone === 'row') { S.zone = 'hero'; S.hBtn = 0; focus(); return; }
+  if (S.zone === 'grid' || S.zone === 'settings' || S.zone === 'search') {
     gotoSection('home'); return;
   }
-  if (S.zone==='nav') { S.zone='hero'; focus(); return; }
+  if (S.zone === 'nav') { S.zone = 'hero'; focus(); return; }
 }
 
 function toggleNav() {
@@ -1279,14 +1491,12 @@ function gotoSection(sec) {
   $('grid-view').style.display='flex';
   S.zone='grid'; S.gridIdx=0;
 
-  if (sec==='movies') {
-    const items=S.allItems.filter(i=>!i.series_id&&!i.isLive);
-    renderGrid(items,false);
-  } else if (sec==='shows') {
-    const items=S.allItems.filter(i=>i.series_id);
-    renderGrid(items,false);
-  } else if (sec==='live') {
-    renderGrid(groupLiveItems(S.liveItems),true);
+  if (sec === 'movies') {
+    renderGrid(S.allVod || S.allItems.filter(i => !i.series_id && !i.isLive), false);
+  } else if (sec === 'shows') {
+    renderGrid(S.allSeries || S.allItems.filter(i => i.series_id), false);
+  } else if (sec === 'live') {
+    renderGrid(groupLiveItems(S.liveItems), true);
   }
   focus();
 }
@@ -1297,121 +1507,51 @@ function gotoSection(sec) {
 function playItem(item) {
   if (!item) return;
   pushHist(item);
-  if (item.url && !item.url.includes('player_api') && !item.series_id) {
-    openVlc(item.url, item.title, item.isLive||false, item);
-    return;
-  }
-  if (item.series_id) { showDetail(item); return; }
-  if (item.isLive && item.stream_id) {
-    openVlc(`http://goldenlink.live/live/${U}/${P}/${item.stream_id}.ts`, item.title, true, item);
-    return;
-  }
-  if (item.stream_id) {
-    openVlc(`http://goldenlink.live/movie/${U}/${P}/${item.stream_id}.mkv`, item.title, false, item);
-    return;
-  }
-  showDetail(item);
-}
 
-function playEp(ep) {
-  const title=`${S.detItem?.title||''} — ${ep.title||'Épisode '+ep.episode_num}`.trim().replace(/^—\s*/,'');
-  const url = ep.url || `http://goldenlink.live/series/${U}/${P}/${ep.id}.${ep.ext||ep.container_extension||'mkv'}`;
-  if (S.detItem) pushHist(S.detItem);
-  openVlc(url, title, false, S.detItem);
+  // Live : URL directe ou construite depuis stream_id
+  if (item.isLive) {
+    const url = item.url
+      || (item.stream_id ? `http://goldenlink.live/live/${U}/${P}/${item.stream_id}.ts` : '');
+    if (url) { openVlc(url, item.title, true, item); return; }
+  }
+
+  // VOD : URL directe ou construite depuis stream_id
+  if (!item.series_id) {
+    const url = (item.url && !item.url.includes('player_api'))
+      ? item.url
+      : item.stream_id ? `http://goldenlink.live/movie/${U}/${P}/${item.stream_id}.mkv` : '';
+    if (url) { openVlc(url, item.title, false, item); return; }
+  }
+
+  // Série sans URL directe → panneau épisodes
+  if (item.series_id) { openPanel(item); return; }
 }
 
 function openVlc(url, title, isLive, itemRef) {
   const httpUrl = url.replace(/^https?:\/\//i, 'http://');
-  // Android TV APK : appel direct — pas de relay via player.html (1 seul BACK)
+  // Android TV APK : appel direct AndroidBridge (1 seul BACK)
   if (window.AndroidBridge?.openInVlc) {
-    try { AndroidBridge.openInVlc(httpUrl, title || '', isLive || false); return; } catch(e) {}
+    try { AndroidBridge.openInVlc(httpUrl, title || '', isLive || false); return; } catch (e) {}
   }
-  // Fallback navigateur / non-TV : player.html avec lecteur HTML5
+  // Fallback navigateur : player.html
   const playerItem = {
-    title:         title || 'Lecture',
-    stream_url:    httpUrl, url: httpUrl,
-    type:          isLive ? 'live' : (itemRef?.series_id ? 'series' : 'vod'),
-    plot:          itemRef?.plot || '',
-    category:      itemRef?.category || '',
+    title        : title || 'Lecture',
+    stream_url   : httpUrl,
+    url          : httpUrl,
+    type         : isLive ? 'live' : (itemRef?.series_id ? 'series' : 'vod'),
+    plot         : itemRef?.plot || '',
+    category     : itemRef?.category || '',
     category_name: itemRef?.category || '',
-    isLive:        isLive || false,
-    series_id:     itemRef?.series_id || null,
-    stream_id:     itemRef?.stream_id || null,
-    image:         itemRef?.image || '',
+    isLive       : isLive || false,
+    series_id    : itemRef?.series_id || null,
+    stream_id    : itemRef?.stream_id || null,
+    image        : itemRef?.image || '',
   };
   sessionStorage.setItem('iptv_current_item', JSON.stringify(playerItem));
   window.location.href = 'player.html';
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  DETAIL OVERLAY
-// ═══════════════════════════════════════════════════════════════════
-async function showDetail(item) {
-  S.prevZone=S.zone;
-  S.detItem=item; S.detEps=[]; S.detEpIdx=0;
-  $('det-img').src  = item.image||'';
-  $('det-title').textContent = item.title;
-  $('det-meta').textContent  = item.category||'';
-  $('det-plot').textContent  = item.plot||'';
-  $('det-actions').innerHTML = '';
-  $('det-eps').innerHTML     = '';
-  $('det').classList.add('on');
-  S.zone='det';
-
-  if (!item.series_id) {
-    const btn=document.createElement('button');
-    btn.className='btn btn-w'; btn.textContent='▶ Lecture';
-    btn.onclick=()=>playItem(item);
-    $('det-actions').appendChild(btn);
-  } else {
-    $('det-eps').innerHTML='<p style="color:var(--dim);padding:8px 0">Chargement des épisodes…</p>';
-    const found = await ensureEpDb(item.series_id);
-    const epEntry = found && epDb[String(item.series_id)];
-    if (epEntry?.seasons) {
-      const eps=[];
-      for (const [sn,list] of Object.entries(epEntry.seasons)) {
-        list.forEach(ep=>eps.push({...ep,_s:sn}));
-      }
-      S.detEps=eps;
-      renderEps(eps,epEntry.seasons);
-    } else {
-      const data=await bridgeFetch(`${API}?username=${U}&password=${P}&action=get_series_info&series_id=${item.series_id}`);
-      if (data?.episodes) {
-        const eps=[];
-        for (const [sn,list] of Object.entries(data.episodes)) {
-          list.forEach(ep=>eps.push({...ep,_s:sn}));
-        }
-        S.detEps=eps;
-        renderEps(eps,data.episodes);
-      } else {
-        $('det-eps').innerHTML='<p style="color:var(--dim)">Aucun épisode disponible.</p>';
-      }
-    }
-  }
-  focus();
-}
-
-function renderEps(all,grouped) {
-  const c=$('det-eps'); c.innerHTML='';
-  let globalIdx=0;
-  for (const [s,list] of Object.entries(grouped)) {
-    const h=document.createElement('div'); h.className='ephead';
-    h.textContent=`Saison ${s}`; c.appendChild(h);
-    list.forEach(ep=>{
-      const el=document.createElement('div'); el.className='ep';
-      el.textContent=`Ép. ${ep.episode_num}${ep.title?' — '+ep.title:''}`;
-      const idx=globalIdx++;
-      el.onclick=()=>{ S.detEpIdx=idx; playEp(ep); };
-      c.appendChild(el);
-    });
-  }
-}
-
-function closeDet() {
-  $('det').classList.remove('on');
-  S.zone = S.prevZone || (S.sec==='home' ? 'hero' : 'grid');
-  focus();
-}
+// (Le panneau #det n'est plus utilisé — les séries passent par #seriesPanel via openPanel)
 
 // ═══════════════════════════════════════════════════════════════════
 //  LIVE — Quality grouping
@@ -1478,241 +1618,292 @@ function openLivePicker(group){
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  SERIES PANEL
+//  ESC helper
 // ═══════════════════════════════════════════════════════════════════
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-function openPanel(item){
-  S.panelOpen=true; S.panelItem=item; S.panelIsVod=false;
-  S.panelZone='acts'; S.panelActIdx=0; S.panelTabIdx=0; S.panelEpIdx=0;
-  S.panelSmap={}; S.panelSmeta=[]; S.panelSelSeason=null; S.panelEps=[];
-  S.prevZone=S.zone; S.zone='panel';
-  renderPanelShell(item, true);
+// ═══════════════════════════════════════════════════════════════════
+//  VOD PANEL  (film — synopsis + bouton lecture)
+// ═══════════════════════════════════════════════════════════════════
+function openVodPanel(item) {
+  S.panelOpen   = true;
+  S.panelItem   = item;
+  S.panelIsVod  = true;
+  S.panelZone   = 'acts';
+  S.panelActIdx = 0;
+  S.prevZone    = S.zone;
+  S.zone        = 'panel';
+
+  const cover = item.image || '';
+  const fav   = isFav(item);
+  const meta  = [item.category, item.quality].filter(Boolean).join(' · ');
+
+  $('seriesPanel').innerHTML = `
+    <div class="spp-wrap">
+      <div class="spp-left">
+        <div class="spp-aura" style="background-image:url('${esc(cover)}')"></div>
+        <button class="spp-close" id="spClose">✕</button>
+        <div class="spp-lc">
+          ${cover
+            ? `<img class="spp-cover" src="${esc(cover)}" alt="" loading="lazy" onerror="this.style.display='none'">`
+            : `<div class="spp-nocover">🎬</div>`}
+          <div class="spp-kicker">Film</div>
+          <h3 class="spp-title">${esc(item.title)}</h3>
+          ${meta ? `<div class="spp-meta">${esc(meta)}</div>` : ''}
+          <p class="spp-plot" id="spPlot">${esc(item.plot || 'Chargement du synopsis…')}</p>
+          <div class="spp-acts" id="spActs">
+            <button class="spp-btn spp-btn-w" id="spPlayBtn">▶ Lecture</button>
+            <button class="spp-btn spp-btn-g${fav ? ' is-fav' : ''}" id="spFavBtn">
+              <span class="fhrt">${fav ? '♥' : '♡'}</span>
+              <span id="spFavLbl">${fav ? 'Favori' : 'Ajouter'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="spp-right" id="spRight"></div>
+    </div>`;
+
   $('seriesPanel').classList.add('on');
-  ensureEpDb(item.series_id).then(found=>{
-    const entry=found&&epDb[String(item.series_id)];
-    if(entry?.seasons){
-      const smap={};
-      Object.entries(entry.seasons).forEach(([sk,list])=>{
-        smap[String(sk)]=list.map(ep=>({
-          id:ep.id, episode_num:ep.episode_num, season:ep.season||sk,
-          title:ep.title||`Épisode ${ep.episode_num}`,
-          url:ep.url, stream_url:ep.url,
-          container_extension:ep.ext||'mkv',
-          duration:ep.duration||'', plot:ep.plot||'', thumb:ep.thumb||''
-        }));
-      });
-      S.panelSmap=smap;
-      S.panelSmeta=(entry.seasonsMeta||[]).map(s=>({num:s.num,name:s.name||`Saison ${s.num}`,cover:s.cover||'',count:s.count||0}));
-      if(!item.plot&&entry.meta?.plot) item.plot=entry.meta.plot;
-      if(!item.image&&entry.meta?.cover) item.image=entry.meta.cover;
-    } else {
-      bridgeFetch(`${API}?username=${U}&password=${P}&action=get_series_info&series_id=${item.series_id}`).then(data=>{
-        if(data?.episodes){
-          const smap={};
-          Object.entries(data.episodes).forEach(([sk,list])=>{
-            if(!Array.isArray(list)) return;
-            smap[String(sk)]=list.filter(ep=>ep&&(ep.id||ep.episode_num)).map(ep=>({
-              id:ep.id, episode_num:Number(ep.episode_num)||1, season:Number(ep.season||sk),
-              title:ep.title||`Épisode ${ep.episode_num}`,
-              url:buildEpUrl(item.series_id,ep),
-              stream_url:buildEpUrl(item.series_id,ep),
-              container_extension:ep.container_extension||'mkv',
-              duration:ep.info?.duration||'', plot:ep.info?.plot||'', thumb:ep.info?.movie_image||''
-            })).sort((a,b)=>a.episode_num-b.episode_num);
-          });
-          S.panelSmap=smap;
-          if(Array.isArray(data.seasons)){
-            S.panelSmeta=data.seasons.filter(s=>s.season_number>0)
-              .sort((a,b)=>a.season_number-b.season_number)
-              .map(s=>({num:s.season_number,name:s.name||`Saison ${s.season_number}`,cover:s.cover_big||s.cover||'',count:s.episode_count||0}));
-          }
-          if(!item.plot&&data.info?.plot) item.plot=data.info.plot;
-          if(!item.image&&data.info?.cover) item.image=data.info.cover;
-        }
-        renderPanelFull();
-      });
-      return;
-    }
+  $('spClose').addEventListener('click', closePanel);
+  $('spPlayBtn').addEventListener('click', () => { closePanel(); playItem(item); });
+  $('spFavBtn').addEventListener('click', () => { updatePanelFav(item); });
+  focusPanel();
+
+  // Lazy-load synopsis si absent
+  if (!item.plot) {
+    fetchVodPlot(item).then(p => {
+      const el = $('spPlot');
+      if (el) el.textContent = p || 'Aucun synopsis disponible.';
+      if (p) item.plot = p;
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SERIES PANEL  (chargement épisodes depuis epDb / API)
+// ═══════════════════════════════════════════════════════════════════
+function openPanel(item) {
+  S.panelOpen      = true;
+  S.panelItem      = item;
+  S.panelIsVod     = false;
+  S.panelZone      = 'acts';
+  S.panelActIdx    = 0;
+  S.panelTabIdx    = 0;
+  S.panelEpIdx     = 0;
+  S.panelSmap      = {};
+  S.panelSmeta     = [];
+  S.panelSelSeason = null;
+  S.panelEps       = [];
+  S.prevZone       = S.zone;
+  S.zone           = 'panel';
+
+  const cover = item.image || '';
+  const fav   = isFav(item);
+
+  $('seriesPanel').innerHTML = `
+    <div class="spp-wrap">
+      <div class="spp-left">
+        <div class="spp-aura" style="background-image:url('${esc(cover)}')"></div>
+        <button class="spp-close" id="spClose">✕</button>
+        <div class="spp-lc">
+          ${cover
+            ? `<img class="spp-cover" src="${esc(cover)}" alt="" loading="lazy" onerror="this.style.display='none'">`
+            : `<div class="spp-nocover">📺</div>`}
+          <div class="spp-kicker">Série</div>
+          <h3 class="spp-title">${esc(item.title)}</h3>
+          ${item.category ? `<div class="spp-meta">${esc(item.category)}</div>` : ''}
+          <p class="spp-plot" id="spPlot">${esc(item.plot || '')}</p>
+          <div class="spp-acts" id="spActs">
+            <button class="spp-btn spp-btn-g${fav ? ' is-fav' : ''}" id="spFavBtn">
+              <span class="fhrt">${fav ? '♥' : '♡'}</span>
+              <span id="spFavLbl">${fav ? 'Favori' : 'Ajouter'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="spp-right" id="spRight">
+        <div class="spp-loading"><div class="spp-spin"></div> Chargement des épisodes…</div>
+      </div>
+    </div>`;
+
+  $('seriesPanel').classList.add('on');
+  $('spClose').addEventListener('click', closePanel);
+  $('spFavBtn').addEventListener('click', () => { updatePanelFav(item); });
+  focusPanel();
+
+  loadEpisodes(item).then(({ seasonsMap, seasonsMeta, directOnly }) => {
+    S.panelSmap      = seasonsMap;
+    S.panelSmeta     = seasonsMeta;
+    S.panelDirectOnly = directOnly || false;
+    // Update plot if enriched by loadEpisodes
+    const plotEl = $('spPlot');
+    if (plotEl && item.plot && !plotEl.textContent) plotEl.textContent = item.plot;
     renderPanelFull();
   });
 }
 
-function buildEpUrl(seriesId,ep){
-  if(ep.url&&!ep.url.includes('player_api')&&!ep.url.includes('get_series_info')) return ep.url;
-  const ext=ep.container_extension||'mkv';
-  if(ep.id&&!String(ep.id).includes('-')) return `http://goldenlink.live/series/${U}/${P}/${ep.id}.${ext}`;
-  return '';
-}
-
-function openVodPanel(item){
-  S.panelOpen=true; S.panelItem=item; S.panelIsVod=true;
-  S.panelZone='acts'; S.panelActIdx=0;
-  S.prevZone=S.zone; S.zone='panel';
-  renderPanelShell(item, false);
-  $('seriesPanel').classList.add('on');
-}
-
-function closePanel(){
-  S.panelOpen=false;
+function closePanel() {
+  S.panelOpen = false;
   $('seriesPanel').classList.remove('on');
-  S.zone=S.prevZone||(S.sec==='home'?'hero':'grid');
+  S.zone = S.prevZone || (S.sec === 'home' ? 'hero' : 'grid');
   focus();
 }
 
-function renderPanelShell(item, loading){
-  const cover=item.image||'';
-  const fav=isFav(item);
-  const kicker=item.series_id?'Série':'Film';
-  const acts=item.series_id
-    ? `<button class="spp-btn spp-btn-g" id="spFavBtn"><span class="fhrt">${fav?'♥':'♡'}</span> <span id="spFavLbl">${fav?'Favori':'Favoris'}</span></button>`
-    : `<button class="spp-btn spp-btn-w" id="spPlayBtn">▶ Lecture</button>
-       <button class="spp-btn spp-btn-g" id="spFavBtn"><span class="fhrt">${fav?'♥':'♡'}</span> <span id="spFavLbl">${fav?'Favori':'Ajouter'}</span></button>`;
-  $('seriesPanel').innerHTML=`
-    <div class="spp-wrap">
-      <div class="spp-left">
-        <div class="spp-aura" id="sppAura" style="background-image:url('${esc(cover)}')"></div>
-        <button class="spp-close" id="spClose">✕</button>
-        <div class="spp-lc">
-          ${cover?`<img class="spp-cover" src="${esc(cover)}" alt="" loading="lazy" onerror="this.style.display='none'">`
-                 :`<div class="spp-nocover">🎬</div>`}
-          <div class="spp-kicker">${esc(kicker)}</div>
-          <h3 class="spp-title">${esc(item.title)}</h3>
-          ${item.category?`<div class="spp-meta">${esc(item.category)}</div>`:''}
-          <p class="spp-plot">${esc(item.plot||'')}</p>
-          <div class="spp-acts" id="spActs">${acts}</div>
-        </div>
-      </div>
-      <div class="spp-right" id="spRight">
-        ${loading?`<div class="spp-loading"><div class="spp-spin"></div> Chargement des épisodes…</div>`:''}
-      </div>
-    </div>`;
-  $('spClose').addEventListener('click', closePanel);
-  $('spPlayBtn')?.addEventListener('click',()=>{ closePanel(); playItem(item); });
-  $('spFavBtn')?.addEventListener('click',()=>{ updatePanelFav(item); });
-  focusPanel();
+function updatePanelFav(item) {
+  const isnow = toggleFav(item);
+  const btn   = $('spFavBtn');
+  if (!btn) return;
+  btn.classList.toggle('is-fav', isnow);
+  btn.querySelector('.fhrt').textContent = isnow ? '♥' : '♡';
+  const lbl = $('spFavLbl');
+  if (lbl) lbl.textContent = isnow ? 'Favori' : 'Ajouter';
 }
 
-function updatePanelFav(item){
-  const isnow=toggleFav(item);
-  const btn=$('spFavBtn');
-  if(!btn) return;
-  btn.classList.toggle('is-fav',isnow);
-  btn.querySelector('.fhrt').textContent=isnow?'♥':'♡';
-  const lbl=$('spFavLbl');
-  if(lbl) lbl.textContent=isnow?'Favori':'Ajouter';
-}
+function renderPanelFull() {
+  const item  = S.panelItem;
+  const smap  = S.panelSmap;
+  const smeta = S.panelSmeta;
+  const keys  = Object.keys(smap).sort((a, b) => Number(a) - Number(b));
+  S.panelSelSeason = keys[0] || null;
+  S.panelEps       = S.panelSelSeason ? smap[S.panelSelSeason] : [];
 
-function renderPanelFull(){
-  const item=S.panelItem;
-  const smap=S.panelSmap;
-  const smeta=S.panelSmeta;
-  const keys=Object.keys(smap).sort((a,b)=>Number(a)-Number(b));
-  S.panelSelSeason=keys[0]||null;
-  S.panelEps=S.panelSelSeason?smap[S.panelSelSeason]:[];
-  const right=$('spRight');
-  if(!right) return;
-  if(!keys.length){ right.innerHTML=`<div class="spp-noep">Aucun épisode disponible.</div>`; focusPanel(); return; }
-  const totalEps=Object.values(smap).reduce((n,a)=>n+a.length,0);
-  const tabsHtml=keys.length>1?`<div class="spp-tabs">${keys.map((sk,i)=>{
-    const m=smeta.find(x=>String(x.num)===sk);
-    const lbl=m?m.name:`Saison ${sk}`;
-    const cnt=smap[sk]?.length||0;
-    return `<button class="spp-tab${i===0?' active':''}" data-sk="${esc(sk)}">${esc(lbl)}<span class="spp-tab-cnt">${cnt} ép.</span></button>`;
-  }).join('')}</div>`:keys.length===1?`<div class="spp-onesaison">${smeta[0]?.name||'Saison 1'} — ${totalEps} épisode${totalEps>1?'s':''}</div>`:'';
-  right.innerHTML=`<div class="spp-rtitle">Épisodes</div>${tabsHtml}<div class="spp-eplist" id="spEpList"></div>`;
-  right.querySelectorAll('.spp-tab').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const sk=btn.dataset.sk;
-      S.panelSelSeason=sk; S.panelEps=smap[sk]||[]; S.panelEpIdx=0; S.panelZone='eps';
-      right.querySelectorAll('.spp-tab').forEach(t=>t.classList.toggle('active',t.dataset.sk===sk));
+  const right = $('spRight');
+  if (!right) return;
+
+  if (!keys.length) {
+    right.innerHTML = S.panelDirectOnly
+      ? `<div class="spp-noep">Épisodes non disponibles pour cette série.</div>`
+      : `<div class="spp-noep">Aucun épisode disponible.</div>`;
+    S.panelZone = 'acts';
+    focusPanel();
+    return;
+  }
+
+  const totalEps = Object.values(smap).reduce((n, a) => n + a.length, 0);
+
+  let tabsHtml = '';
+  if (keys.length > 1) {
+    tabsHtml = `<div class="spp-tabs">${keys.map((sk, i) => {
+      const m   = smeta.find(x => String(x.num) === sk);
+      const lbl = m ? m.name : `Saison ${sk}`;
+      const cnt = smap[sk]?.length || 0;
+      return `<button class="spp-tab${i === 0 ? ' active' : ''}" data-sk="${esc(sk)}">${esc(lbl)}<span class="spp-tab-cnt"> ${cnt} ép.</span></button>`;
+    }).join('')}</div>`;
+  } else {
+    const lbl = smeta[0]?.name || `Saison ${keys[0]}`;
+    tabsHtml = `<div class="spp-onesaison">${esc(lbl)} — ${totalEps} épisode${totalEps > 1 ? 's' : ''}</div>`;
+  }
+
+  right.innerHTML = `<div class="spp-rtitle">Épisodes</div>${tabsHtml}<div class="spp-eplist" id="spEpList"></div>`;
+
+  right.querySelectorAll('.spp-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sk = btn.dataset.sk;
+      S.panelSelSeason = sk;
+      S.panelEps       = smap[sk] || [];
+      S.panelEpIdx     = 0;
+      S.panelZone      = 'eps';
+      right.querySelectorAll('.spp-tab').forEach(t => t.classList.toggle('active', t.dataset.sk === sk));
       renderEpList();
       focusPanel();
     });
   });
+
   renderEpList();
-  S.panelZone='eps';
+  S.panelZone = 'eps';
   focusPanel();
 }
 
-function renderEpList(){
-  const list=$('spEpList'); if(!list) return;
-  const eps=S.panelEps; const item=S.panelItem;
-  if(!eps.length){ list.innerHTML=`<div class="spp-noep">Aucun épisode dans cette saison.</div>`; return; }
-  const sk=S.panelSelSeason||'1';
-  list.innerHTML=eps.map((ep,idx)=>{
-    const code=`S${String(sk).padStart(2,'0')}E${String(ep.episode_num).padStart(2,'0')}`;
-    const progK=`${item.series_id}||${code}`;
-    const pct=getProg()[progK]?.pct||0;
-    const done=pct>=90;
-    const hasUrl=!!ep.url;
-    return `<button class="spp-ep${done?' spp-ep--done':''}${!hasUrl?' spp-ep--disabled':''}"
-      data-idx="${idx}" ${!hasUrl?'disabled':''}>
-      ${ep.thumb?`<img class="spp-ep-img" src="${esc(ep.thumb)}" alt="" loading="lazy">`:
-                 `<div class="spp-ep-img spp-ep-img--blank">🎬</div>`}
+function renderEpList() {
+  const list = $('spEpList');
+  if (!list) return;
+  const eps  = S.panelEps;
+  const item = S.panelItem;
+  if (!eps.length) { list.innerHTML = `<div class="spp-noep">Aucun épisode dans cette saison.</div>`; return; }
+  const sk = S.panelSelSeason || '1';
+
+  list.innerHTML = eps.map((ep, idx) => {
+    const code  = `S${String(sk).padStart(2, '0')}E${String(ep.episode_num).padStart(2, '0')}`;
+    const progK = `${item.series_id}||${code}`;
+    const pct   = getProg()[progK]?.pct || 0;
+    const done  = pct >= 90;
+    const hasUrl = !!ep.url;
+    return `<button class="spp-ep${done ? ' spp-ep--done' : ''}${!hasUrl ? ' spp-ep--disabled' : ''}"
+      data-idx="${idx}" ${!hasUrl ? 'disabled' : ''}>
+      ${ep.thumb
+        ? `<img class="spp-ep-img" src="${esc(ep.thumb)}" alt="" loading="lazy">`
+        : `<div class="spp-ep-img spp-ep-img--blank">🎬</div>`}
       <div class="spp-ep-info">
         <span class="spp-ep-code">${esc(code)}</span>
-        <span class="spp-ep-title">${esc(ep.title||'Sans titre')}</span>
-        ${ep.duration?`<span class="spp-ep-dur">${esc(ep.duration)}</span>`:''}
+        <span class="spp-ep-title">${esc(ep.title || 'Sans titre')}</span>
+        ${ep.duration ? `<span class="spp-ep-dur">${esc(ep.duration)}</span>` : ''}
+        ${ep.plot ? `<span class="spp-ep-dur">${esc(ep.plot.substring(0,100))}${ep.plot.length > 100 ? '…' : ''}</span>` : ''}
       </div>
       <div class="spp-ep-right">
-        ${done?`<span class="spp-check">✓</span>`:pct>2?`<span class="spp-pct">${Math.round(pct)}%</span>`:''}
-        <span class="spp-play">▶</span>
+        ${done ? `<span class="spp-check">✓</span>` : pct > 2 ? `<span class="spp-pct">${Math.round(pct)}%</span>` : ''}
+        ${hasUrl ? `<span class="spp-play">▶</span>` : `<span class="spp-play" style="opacity:.3">–</span>`}
       </div>
     </button>
-    ${pct>2?`<div class="spp-prog"><div class="spp-prog-fill" style="width:${Math.min(pct,100)}%"></div></div>`:''}`;
+    ${pct > 2 ? `<div class="spp-prog"><div class="spp-prog-fill" style="width:${Math.min(pct, 100)}%"></div></div>` : ''}`;
   }).join('');
-  list.querySelectorAll('.spp-ep:not([disabled])').forEach(btn=>{
-    btn.addEventListener('click',()=>{ playPanelEp(Number(btn.dataset.idx)); });
+
+  list.querySelectorAll('.spp-ep:not([disabled])').forEach(btn => {
+    btn.addEventListener('click', () => { playPanelEp(Number(btn.dataset.idx)); });
   });
 }
 
-function playPanelEp(idx){
-  const ep=S.panelEps[idx]; if(!ep?.url) return;
-  const item=S.panelItem;
-  const sk=S.panelSelSeason||'1';
-  const code=`S${String(sk).padStart(2,'0')}E${String(ep.episode_num).padStart(2,'0')}`;
-  const httpUrl=ep.url.replace(/^https?:\/\//i,'http://');
+function playPanelEp(idx) {
+  const ep   = S.panelEps[idx];
+  if (!ep?.url) return;
+  const item = S.panelItem;
+  const sk   = S.panelSelSeason || '1';
+  const code = `S${String(sk).padStart(2, '0')}E${String(ep.episode_num).padStart(2, '0')}`;
+  const httpUrl = ep.url.replace(/^https?:\/\//i, 'http://');
   pushHist(item);
-  // Android TV APK : appel direct VLC (1 seul BACK pour revenir)
+
+  // Android TV APK : appel direct VLC
   if (window.AndroidBridge?.openInVlc) {
-    const epTitle=`${item.title} — ${code}${ep.title?' '+ep.title:''}`;
-    try { AndroidBridge.openInVlc(httpUrl, epTitle, false); return; } catch(e) {}
+    const epTitle = `${item.title} — ${code}${ep.title ? ' ' + ep.title : ''}`;
+    try { AndroidBridge.openInVlc(httpUrl, epTitle, false); return; } catch (e) {}
   }
-  // Fallback navigateur : player.html avec prev/next épisodes
-  const smap=S.panelSmap; const keys=Object.keys(smap).sort((a,b)=>Number(a)-Number(b));
-  const allEps=[]; keys.forEach(s=>(smap[s]||[]).forEach(e=>allEps.push({season:s,ep:e})));
-  const curIdx=allEps.findIndex(x=>x.season===sk&&x.ep.episode_num===ep.episode_num);
-  const playerItem={
-    type:'series', series_id:item.series_id,
-    title:item.title, episode_label:code, episode_title:ep.title||'',
-    category:item.category||'', stream_icon:ep.thumb||item.image||'',
-    stream_url:httpUrl, url:httpUrl, plot:ep.plot||item.plot||'',
-    progress_key:`${item.series_id}||${code}`,
-    all_episodes:allEps.map(x=>({
-      season:x.season, episode_num:x.ep.episode_num,
-      title:x.ep.title, url:x.ep.url?.replace(/^https?:\/\//i,'http://'),
-      thumb:x.ep.thumb, plot:x.ep.plot,
-      progress_key:`${item.series_id}||S${String(x.season).padStart(2,'0')}E${String(x.ep.episode_num).padStart(2,'0')}`
+
+  // Fallback navigateur : player.html
+  const smap  = S.panelSmap;
+  const kkeys = Object.keys(smap).sort((a, b) => Number(a) - Number(b));
+  const allEps = [];
+  kkeys.forEach(s => (smap[s] || []).forEach(e => allEps.push({ season: s, ep: e })));
+  const curIdx = allEps.findIndex(x => x.season === sk && x.ep.episode_num === ep.episode_num);
+  const playerItem = {
+    type: 'series', series_id: item.series_id,
+    title: item.title, episode_label: code, episode_title: ep.title || '',
+    category: item.category || '', stream_icon: ep.thumb || item.image || '',
+    stream_url: httpUrl, url: httpUrl, plot: ep.plot || item.plot || '',
+    progress_key: `${item.series_id}||${code}`,
+    all_episodes: allEps.map(x => ({
+      season: x.season, episode_num: x.ep.episode_num, title: x.ep.title,
+      url: x.ep.url?.replace(/^https?:\/\//i, 'http://'),
+      thumb: x.ep.thumb, plot: x.ep.plot,
+      progress_key: `${item.series_id}||S${String(x.season).padStart(2, '0')}E${String(x.ep.episode_num).padStart(2, '0')}`
     })),
-    current_ep_index:curIdx
+    current_ep_index: curIdx
   };
-  sessionStorage.setItem('iptv_current_item',JSON.stringify(playerItem));
-  window.location.href='player.html';
+  sessionStorage.setItem('iptv_current_item', JSON.stringify(playerItem));
+  window.location.href = 'player.html';
 }
 
-function focusPanel(){
+function focusPanel() {
   clearFoc();
-  const panel=$('seriesPanel'); if(!panel) return;
-  if(S.panelZone==='acts'){
-    const btns=panel.querySelectorAll('.spp-acts .spp-btn');
-    btns[Math.min(S.panelActIdx,btns.length-1)]?.classList.add('foc');
-  } else if(S.panelZone==='tabs'){
+  const panel = $('seriesPanel');
+  if (!panel) return;
+  if (S.panelZone === 'acts') {
+    const btns = panel.querySelectorAll('.spp-acts .spp-btn');
+    btns[Math.min(S.panelActIdx, btns.length - 1)]?.classList.add('foc');
+  } else if (S.panelZone === 'tabs') {
     panel.querySelectorAll('.spp-tab')[S.panelTabIdx]?.classList.add('foc');
   } else {
-    const eps=panel.querySelectorAll('.spp-ep:not([disabled])');
-    const el=eps[S.panelEpIdx];
-    if(el){ el.classList.add('foc'); el.scrollIntoView({block:'nearest'}); }
+    const eps = panel.querySelectorAll('.spp-ep:not([disabled])');
+    const el  = eps[S.panelEpIdx];
+    if (el) { el.classList.add('foc'); el.scrollIntoView({ block: 'nearest' }); }
   }
 }
 
@@ -1720,22 +1911,27 @@ function focusPanel(){
 //  SEARCH
 // ═══════════════════════════════════════════════════════════════════
 let _searchTimer;
-$('sinput').addEventListener('input',e=>{
+$('sinput').addEventListener('input', e => {
   clearTimeout(_searchTimer);
-  _searchTimer=setTimeout(()=>{
-    const q=e.target.value.toLowerCase().trim();
-    const c=$('sresults');
-    if (q.length<2) { c.innerHTML=''; return; }
-    const res=S.allItems.concat(S.liveItems)
-      .filter(i=>i.title.toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q))
-      .slice(0,60);
-    c.innerHTML='';
-    res.forEach((item,i)=>{
-      const card=mkCard(item,-1,i,item.isLive);
-      card.onclick=()=>activateItem(item);
+  _searchTimer = setTimeout(() => {
+    const q = e.target.value.toLowerCase().trim();
+    const c = $('sresults');
+    if (q.length < 2) { c.innerHTML = ''; return; }
+    const res = S.allItems.concat(S.liveItems)
+      .filter(i =>
+        (i.title || '').toLowerCase().includes(q) ||
+        (i.category || '').toLowerCase().includes(q) ||
+        (i.category_name || '').toLowerCase().includes(q) ||
+        (i.plot || '').toLowerCase().includes(q)
+      )
+      .slice(0, 60);
+    c.innerHTML = '';
+    res.forEach((item, i) => {
+      const card = mkCard(item, -1, i, item.isLive);
+      card.onclick = () => activateItem(item);
       c.appendChild(card);
     });
-  },300);
+  }, 300);
 });
 
 // ═══════════════════════════════════════════════════════════════════
