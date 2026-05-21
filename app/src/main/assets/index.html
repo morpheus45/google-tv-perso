@@ -347,6 +347,135 @@ html,body{
 }
 .fu-btn:disabled{opacity:.45;transform:none;cursor:not-allowed}
 .fu-progress{font-size:14px;color:var(--accent-l);margin-top:20px;min-height:20px;letter-spacing:.2px}
+
+/* ─── SERIES / VOD PANEL ──────────────────────────────────────────── */
+#seriesPanel{
+  display:none;position:fixed;inset:0;z-index:60;
+  background:rgba(4,6,14,.95);
+  backdrop-filter:blur(28px) saturate(160%);
+  -webkit-backdrop-filter:blur(28px) saturate(160%);
+}
+#seriesPanel.on{display:flex}
+.spp-wrap{width:100%;height:100%;display:flex;flex-direction:row}
+.spp-left{
+  width:440px;flex-shrink:0;padding:56px 36px 40px;
+  display:flex;flex-direction:column;gap:16px;
+  border-right:1px solid rgba(255,255,255,.07);
+  overflow:hidden;position:relative;
+}
+.spp-aura{
+  position:absolute;inset:-20%;z-index:0;
+  background-size:cover;background-position:center;
+  filter:blur(80px) brightness(.16) saturate(1.8);
+  pointer-events:none;
+}
+.spp-lc{position:relative;z-index:1;display:flex;flex-direction:column;gap:16px;height:100%}
+.spp-cover{
+  width:156px;height:234px;object-fit:cover;border-radius:12px;flex-shrink:0;
+  box-shadow:0 20px 60px rgba(0,0,0,.9);
+}
+.spp-nocover{
+  width:156px;height:234px;border-radius:12px;flex-shrink:0;
+  background:rgba(255,255,255,.07);
+  display:flex;align-items:center;justify-content:center;font-size:48px;
+}
+.spp-kicker{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-l)}
+.spp-title{font-size:24px;font-weight:800;line-height:1.2;color:#FFF;margin:0}
+.spp-meta{font-size:12px;color:var(--dim);letter-spacing:.5px;text-transform:uppercase}
+.spp-plot{font-size:13px;line-height:1.7;color:rgba(255,255,255,.65);flex:1;
+  display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.spp-acts{display:flex;gap:12px;margin-top:auto;flex-wrap:wrap;flex-shrink:0}
+.spp-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:12px 26px;border-radius:24px;border:none;
+  font-size:14px;font-weight:700;cursor:pointer;outline:none;
+  transition:transform .15s,box-shadow .15s;
+}
+.spp-btn-w{background:#FFF;color:#111}
+.spp-btn-g{background:rgba(255,255,255,.1);color:#FFF;border:1.5px solid rgba(255,255,255,.2)}
+.spp-btn.foc{transform:scale(1.07);box-shadow:0 0 0 3px rgba(255,255,255,.8),0 6px 24px rgba(0,0,0,.4)}
+.spp-btn.is-fav .fhrt{color:var(--red)}
+.spp-close{
+  position:absolute;top:16px;right:16px;z-index:2;
+  width:42px;height:42px;border-radius:50%;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+  color:#FFF;font-size:16px;cursor:pointer;outline:none;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.spp-close.foc,.spp-close:hover{background:rgba(255,255,255,.22)}
+.spp-right{flex:1;display:flex;flex-direction:column;padding:56px 40px 32px;overflow:hidden}
+.spp-rtitle{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:14px;flex-shrink:0}
+.spp-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;flex-shrink:0}
+.spp-tab{
+  padding:7px 18px;border-radius:20px;
+  border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);
+  font-size:12px;font-weight:600;cursor:pointer;outline:none;
+  transition:background .15s,color .15s;white-space:nowrap;
+}
+.spp-tab.foc,.spp-tab.active{background:var(--accent);color:#FFF;border-color:var(--accent)}
+.spp-tab-cnt{opacity:.7;margin-left:3px;font-weight:400}
+.spp-onesaison{font-size:12px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px;flex-shrink:0}
+.spp-eplist{flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:3px;scrollbar-width:none}
+.spp-eplist::-webkit-scrollbar{display:none}
+.spp-ep{
+  display:flex;align-items:center;gap:14px;
+  padding:10px 14px;border-radius:10px;
+  border:1px solid transparent;cursor:pointer;outline:none;
+  background:none;color:#FFF;text-align:left;width:100%;flex-shrink:0;
+  transition:background .15s,border-color .15s;
+}
+.spp-ep.foc{background:rgba(66,133,244,.18);border-color:rgba(66,133,244,.45)}
+.spp-ep:hover{background:rgba(255,255,255,.06)}
+.spp-ep--done{opacity:.42}
+.spp-ep-img{width:78px;height:45px;border-radius:6px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,.08)}
+.spp-ep-img--blank{display:flex;align-items:center;justify-content:center;font-size:18px}
+.spp-ep-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.spp-ep-code{font-size:11px;font-weight:800;color:var(--accent-l);display:block}
+.spp-ep-title{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.spp-ep-dur{font-size:11px;color:var(--dim);display:block}
+.spp-ep-right{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px}
+.spp-check{color:#76D99A;font-size:16px;font-weight:800}
+.spp-pct{font-size:11px;color:var(--dim)}
+.spp-play{font-size:18px;color:rgba(255,255,255,.2);transition:color .15s}
+.spp-ep.foc .spp-play{color:var(--accent)}
+.spp-prog{height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin:2px 0 0}
+.spp-prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-l));border-radius:2px}
+.spp-noep{padding:20px 0;color:var(--dim);font-size:14px;text-align:center}
+.spp-loading{display:flex;align-items:center;gap:10px;color:var(--dim);padding:20px 0}
+.spp-spin{width:20px;height:20px;border:2px solid rgba(255,255,255,.15);border-top-color:var(--accent);border-radius:50%;animation:sp .75s linear infinite}
+
+/* ─── LIVE PICKER ─────────────────────────────────────────────────── */
+.live-picker{
+  position:fixed;inset:0;z-index:70;
+  background:rgba(0,0,0,.86);backdrop-filter:blur(16px);
+  display:flex;align-items:center;justify-content:center;
+}
+.live-picker__box{
+  background:rgba(18,20,28,.98);border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;padding:48px 56px;max-width:520px;width:90%;
+  text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.9);
+}
+.live-picker__title{font-size:22px;font-weight:800;margin-bottom:6px}
+.live-picker__sub{font-size:14px;color:var(--dim);margin-bottom:28px}
+.live-picker__grid{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:24px}
+.live-picker__btn{
+  padding:14px 32px;border-radius:14px;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
+  color:#FFF;cursor:pointer;outline:none;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  transition:background .15s,transform .15s;
+}
+.live-picker__btn:focus{background:var(--accent);border-color:var(--accent);transform:scale(1.08);box-shadow:0 0 0 3px rgba(255,255,255,.5)}
+.live-picker__qual{font-size:20px;font-weight:800}
+.live-picker__hint{font-size:11px;color:rgba(255,255,255,.5)}
+.live-picker__close{
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
+  color:rgba(255,255,255,.55);padding:10px 24px;border-radius:20px;
+  cursor:pointer;outline:none;font-size:13px;
+}
+.live-picker__close:focus{color:#FFF;border-color:rgba(255,255,255,.4)}
 </style>
 </head>
 <body>
@@ -463,6 +592,9 @@ html,body{
   </div>
 </div>
 
+<!-- SERIES / VOD PANEL -->
+<div id="seriesPanel"></div>
+
 <!-- DETAIL OVERLAY -->
 <div id="det">
   <div class="det-card">
@@ -510,6 +642,18 @@ const S = {
   _updateUrl: null,
   _forceUpdateCheck: false,
   _forceUpdateActive: false,
+  // Panel (series / VOD)
+  panelOpen: false,
+  panelItem: null,
+  panelIsVod: false,
+  panelZone: 'acts',  // 'acts' | 'tabs' | 'eps'
+  panelActIdx: 0,     // 0=play, 1=fav
+  panelTabIdx: 0,
+  panelEpIdx: 0,
+  panelSmap: {},      // { "1": [ep,...] }
+  panelSmeta: [],     // [{ num, name, cover, count }]
+  panelSelSeason: null,
+  panelEps: [],       // flat list of current season eps
 };
 
 const NAV_ITEMS = ['home','search','movies','shows','live','settings'];
@@ -556,9 +700,23 @@ async function loadJSON(url) {
 // ═══════════════════════════════════════════════════════════════════
 //  PROGRESS / HISTORY
 // ═══════════════════════════════════════════════════════════════════
-const STORE = { progress:'pf_progress_v4', history:'pf_history_v4' };
+const STORE = { progress:'pf_progress_v4', history:'pf_history_v4', favs:'pf_favorites_v4' };
 function storeGet(k,fb){ try{ const r=localStorage.getItem(k); return r?JSON.parse(r):fb; }catch{ return fb; } }
 function storeSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} }
+
+// ═══════════════════════════════════════════════════════════════════
+//  FAVORITES
+// ═══════════════════════════════════════════════════════════════════
+function getFavs(){ return storeGet(STORE.favs,[]); }
+function favKey(item){ return (item.series_id?'s_':'v_')+(item.series_id||item.stream_id||item.url||item.title); }
+function isFav(item){ return getFavs().some(x=>x.key===favKey(item)); }
+function toggleFav(item){
+  const favs=getFavs(); const key=favKey(item);
+  const idx=favs.findIndex(x=>x.key===key);
+  if(idx>=0) favs.splice(idx,1); else favs.unshift({key,item,at:Date.now()});
+  storeSet(STORE.favs,favs.slice(0,500));
+  return getFavs().some(x=>x.key===key);
+}
 
 let _cacheP=null;
 function getProg(){ if(!_cacheP) _cacheP=storeGet(STORE.progress,{}); return _cacheP; }
@@ -697,6 +855,9 @@ async function loadContent() {
     const histItems = getHist().slice(0,15).map(h=>h.item).filter(Boolean);
     if (histItems.length) rows.push({title:'▶ Continuer à regarder',items:histItems});
 
+    const favItems = getFavs().slice(0,30).map(f=>f.item).filter(Boolean);
+    if (favItems.length) rows.push({title:'♥ Mes favoris',items:favItems});
+
     if (pool.length) rows.push({title:'Recommandé pour vous',items:shuffle(pool).slice(0,20)});
 
     Object.entries(byCat)
@@ -706,7 +867,8 @@ async function loadContent() {
       .forEach(([cat,items])=>rows.push({title:cat,items:items.slice(0,40)}));
 
     if (S.liveItems.length) {
-      rows.push({title:'TV en Direct',items:S.liveItems.slice(0,30),isLive:true});
+      const grouped=groupLiveItems(S.liveItems);
+      rows.push({title:'TV en Direct',items:grouped.slice(0,30),isLive:true});
     }
 
     S.rows = rows;
@@ -900,6 +1062,37 @@ function nav(dir) {
   if (S._forceUpdateActive) return;
   const z=S.zone;
 
+  if (z==='panel') {
+    const panel=$('seriesPanel');
+    if (S.panelZone==='acts') {
+      const btns=panel?panel.querySelectorAll('.spp-acts .spp-btn'):[];
+      if (dir==='l') S.panelActIdx=Math.max(0,S.panelActIdx-1);
+      else if (dir==='r') S.panelActIdx=Math.min(btns.length-1,S.panelActIdx+1);
+      else if (dir==='d'&&!S.panelIsVod&&Object.keys(S.panelSmap).length) { S.panelZone='tabs'; S.panelTabIdx=0; }
+    } else if (S.panelZone==='tabs') {
+      const keys=Object.keys(S.panelSmap).sort((a,b)=>Number(a)-Number(b));
+      if (dir==='u') { S.panelZone='acts'; }
+      else if (dir==='d') { S.panelZone='eps'; S.panelEpIdx=0; }
+      else if (dir==='l'||dir==='r') {
+        S.panelTabIdx=dir==='l'?Math.max(0,S.panelTabIdx-1):Math.min(keys.length-1,S.panelTabIdx+1);
+        const sk=keys[S.panelTabIdx];
+        if(sk&&sk!==S.panelSelSeason){
+          S.panelSelSeason=sk; S.panelEps=S.panelSmap[sk]||[]; S.panelEpIdx=0;
+          panel?.querySelectorAll('.spp-tab').forEach(t=>t.classList.toggle('active',t.dataset.sk===sk));
+          renderEpList();
+        }
+      }
+    } else { // eps
+      const cnt=S.panelEps.length||1;
+      if (dir==='u') {
+        if(S.panelEpIdx===0) S.panelZone=Object.keys(S.panelSmap).length?'tabs':'acts';
+        else S.panelEpIdx--;
+      }
+      else if (dir==='d') S.panelEpIdx=Math.min(cnt-1,S.panelEpIdx+1);
+    }
+    focusPanel(); return;
+  }
+
   if (z==='nav') {
     if (dir==='l') S.navIdx=Math.max(0,S.navIdx-1);
     else if (dir==='r') S.navIdx=Math.min(NAV_ITEMS.length-1,S.navIdx+1);
@@ -974,23 +1167,42 @@ function nav(dir) {
 // ═══════════════════════════════════════════════════════════════════
 //  SELECT
 // ═══════════════════════════════════════════════════════════════════
+function activateItem(item){
+  if(!item) return;
+  if(item.isLive){
+    if(item._variants&&item._variants.length>1) openLivePicker(item);
+    else playItem(item._variants?.[0]?.item||item);
+  } else if(item.series_id){ openPanel(item); }
+  else { openVodPanel(item); }
+}
+
 function select() {
   if (S._forceUpdateActive) { startForceInstall(); return; }
   const z=S.zone;
+  if (z==='panel') {
+    if(S.panelZone==='acts'){
+      const btns=$('seriesPanel')?.querySelectorAll('.spp-acts .spp-btn');
+      btns?.[S.panelActIdx]?.click();
+    } else if(S.panelZone==='eps'){
+      const visibleEps=$('seriesPanel')?.querySelectorAll('.spp-ep:not([disabled])');
+      visibleEps?.[S.panelEpIdx]?.click();
+    }
+    return;
+  }
   if (z==='nav') { gotoSection(NAV_ITEMS[S.navIdx]); return; }
   if (z==='hero') {
     if (S.hBtn===0 && S.heroItem) playItem(S.heroItem);
-    else if (S.hBtn===1 && S.heroItem) showDetail(S.heroItem);
+    else if (S.hBtn===1 && S.heroItem) activateItem(S.heroItem);
     return;
   }
   if (z==='row') {
     const item=S.rows[S.rowIdx]?.items[S.cardIdx];
-    if (item) { item.series_id ? showDetail(item) : playItem(item); }
+    activateItem(item);
     return;
   }
   if (z==='grid') {
     const item=S.gridItems[S.gridIdx];
-    if (item) { item.series_id ? showDetail(item) : playItem(item); }
+    activateItem(item);
     return;
   }
   if (z==='det') {
@@ -1019,6 +1231,7 @@ function select() {
 // ═══════════════════════════════════════════════════════════════════
 function back() {
   if (S._forceUpdateActive) return;
+  if (S.panelOpen) { closePanel(); return; }
   if ($('det').classList.contains('on')) { closeDet(); return; }
   if (S.zone==='row') { S.zone='hero'; S.hBtn=0; focus(); return; }
   if (S.zone==='grid'||S.zone==='settings'||S.zone==='search') {
@@ -1073,7 +1286,7 @@ function gotoSection(sec) {
     const items=S.allItems.filter(i=>i.series_id);
     renderGrid(items,false);
   } else if (sec==='live') {
-    renderGrid(S.liveItems,true);
+    renderGrid(groupLiveItems(S.liveItems),true);
   }
   focus();
 }
@@ -1196,6 +1409,303 @@ function closeDet() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+//  LIVE — Quality grouping
+// ═══════════════════════════════════════════════════════════════════
+const _QUAL_ORDER = ['4K','UHD','FHD','HD','HEVC','SD'];
+const _QUAL_RE    = /[\s\[\(]+(SD|HD|FHD|UHD|4K|8K|HEVC|H\.?265|H\.?264|1080p?|720p?|2160p?)\b\]?\)?/gi;
+function _parseLQ(title){
+  if(!title) return null;
+  const ms=[...title.matchAll(_QUAL_RE)].map(m=>m[1].toUpperCase());
+  for(const q of _QUAL_ORDER) if(ms.includes(q)) return q;
+  return ms[0]||null;
+}
+function _baseLN(title){ return title ? title.replace(_QUAL_RE,'').replace(/\s+/g,' ').trim() : ''; }
+
+function groupLiveItems(items){
+  const groups=new Map();
+  items.forEach(item=>{
+    const base=_baseLN(item.title)||item.title;
+    const qual=_parseLQ(item.title);
+    if(!groups.has(base)){
+      groups.set(base,{...item,title:base,isLive:true,_variants:[],_iconRank:999});
+    }
+    const g=groups.get(base);
+    g._variants.push({quality:qual||'Auto',item});
+    const rank=qual?_QUAL_ORDER.indexOf(qual):99;
+    if(rank>=0&&rank<g._iconRank&&item.image){g.image=item.image;g._iconRank=rank;}
+  });
+  groups.forEach(g=>{
+    g._variants.sort((a,b)=>{
+      const ra=_QUAL_ORDER.indexOf(a.quality); const rb=_QUAL_ORDER.indexOf(b.quality);
+      return (ra<0?99:ra)-(rb<0?99:rb);
+    });
+  });
+  return [...groups.values()];
+}
+
+function openLivePicker(group){
+  if($('livePicker')) return;
+  const ov=document.createElement('div');
+  ov.id='livePicker'; ov.className='live-picker';
+  ov.innerHTML=`<div class="live-picker__box">
+    <h2 class="live-picker__title">${esc(group.title)}</h2>
+    <div class="live-picker__sub">Choisissez la qualité</div>
+    <div class="live-picker__grid">
+      ${group._variants.map((v,i)=>`
+        <button class="live-picker__btn" data-idx="${i}" autofocus="${i===0}">
+          <span class="live-picker__qual">${esc(v.quality)}</span>
+          <span class="live-picker__hint">${esc(v.item.title)}</span>
+        </button>`).join('')}
+    </div>
+    <button class="live-picker__close" id="livePickerClose">✕ Fermer</button>
+  </div>`;
+  document.body.appendChild(ov);
+  setTimeout(()=>ov.querySelector('.live-picker__btn')?.focus(),50);
+  const close=()=>ov.remove();
+  ov.querySelectorAll('.live-picker__btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{ close(); playItem(group._variants[Number(btn.dataset.idx)].item); });
+  });
+  $('livePickerClose').addEventListener('click',close);
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  ov.addEventListener('keydown',e=>{
+    if(e.key==='Escape'||e.key==='GoBack'||e.key==='Back'){ e.preventDefault(); close(); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SERIES PANEL
+// ═══════════════════════════════════════════════════════════════════
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function openPanel(item){
+  S.panelOpen=true; S.panelItem=item; S.panelIsVod=false;
+  S.panelZone='acts'; S.panelActIdx=0; S.panelTabIdx=0; S.panelEpIdx=0;
+  S.panelSmap={}; S.panelSmeta=[]; S.panelSelSeason=null; S.panelEps=[];
+  S.prevZone=S.zone; S.zone='panel';
+  renderPanelShell(item, true);
+  $('seriesPanel').classList.add('on');
+  ensureEpDb(item.series_id).then(found=>{
+    const entry=found&&epDb[String(item.series_id)];
+    if(entry?.seasons){
+      const smap={};
+      Object.entries(entry.seasons).forEach(([sk,list])=>{
+        smap[String(sk)]=list.map(ep=>({
+          id:ep.id, episode_num:ep.episode_num, season:ep.season||sk,
+          title:ep.title||`Épisode ${ep.episode_num}`,
+          url:ep.url, stream_url:ep.url,
+          container_extension:ep.ext||'mkv',
+          duration:ep.duration||'', plot:ep.plot||'', thumb:ep.thumb||''
+        }));
+      });
+      S.panelSmap=smap;
+      S.panelSmeta=(entry.seasonsMeta||[]).map(s=>({num:s.num,name:s.name||`Saison ${s.num}`,cover:s.cover||'',count:s.count||0}));
+      if(!item.plot&&entry.meta?.plot) item.plot=entry.meta.plot;
+      if(!item.image&&entry.meta?.cover) item.image=entry.meta.cover;
+    } else {
+      bridgeFetch(`${API}?username=${U}&password=${P}&action=get_series_info&series_id=${item.series_id}`).then(data=>{
+        if(data?.episodes){
+          const smap={};
+          Object.entries(data.episodes).forEach(([sk,list])=>{
+            if(!Array.isArray(list)) return;
+            smap[String(sk)]=list.filter(ep=>ep&&(ep.id||ep.episode_num)).map(ep=>({
+              id:ep.id, episode_num:Number(ep.episode_num)||1, season:Number(ep.season||sk),
+              title:ep.title||`Épisode ${ep.episode_num}`,
+              url:buildEpUrl(item.series_id,ep),
+              stream_url:buildEpUrl(item.series_id,ep),
+              container_extension:ep.container_extension||'mkv',
+              duration:ep.info?.duration||'', plot:ep.info?.plot||'', thumb:ep.info?.movie_image||''
+            })).sort((a,b)=>a.episode_num-b.episode_num);
+          });
+          S.panelSmap=smap;
+          if(Array.isArray(data.seasons)){
+            S.panelSmeta=data.seasons.filter(s=>s.season_number>0)
+              .sort((a,b)=>a.season_number-b.season_number)
+              .map(s=>({num:s.season_number,name:s.name||`Saison ${s.season_number}`,cover:s.cover_big||s.cover||'',count:s.episode_count||0}));
+          }
+          if(!item.plot&&data.info?.plot) item.plot=data.info.plot;
+          if(!item.image&&data.info?.cover) item.image=data.info.cover;
+        }
+        renderPanelFull();
+      });
+      return;
+    }
+    renderPanelFull();
+  });
+}
+
+function buildEpUrl(seriesId,ep){
+  if(ep.url&&!ep.url.includes('player_api')&&!ep.url.includes('get_series_info')) return ep.url;
+  const ext=ep.container_extension||'mkv';
+  if(ep.id&&!String(ep.id).includes('-')) return `http://goldenlink.live/series/${U}/${P}/${ep.id}.${ext}`;
+  return '';
+}
+
+function openVodPanel(item){
+  S.panelOpen=true; S.panelItem=item; S.panelIsVod=true;
+  S.panelZone='acts'; S.panelActIdx=0;
+  S.prevZone=S.zone; S.zone='panel';
+  renderPanelShell(item, false);
+  $('seriesPanel').classList.add('on');
+}
+
+function closePanel(){
+  S.panelOpen=false;
+  $('seriesPanel').classList.remove('on');
+  S.zone=S.prevZone||(S.sec==='home'?'hero':'grid');
+  focus();
+}
+
+function renderPanelShell(item, loading){
+  const cover=item.image||'';
+  const fav=isFav(item);
+  const kicker=item.series_id?'Série':'Film';
+  const acts=item.series_id
+    ? `<button class="spp-btn spp-btn-g" id="spFavBtn"><span class="fhrt">${fav?'♥':'♡'}</span> <span id="spFavLbl">${fav?'Favori':'Favoris'}</span></button>`
+    : `<button class="spp-btn spp-btn-w" id="spPlayBtn">▶ Lecture</button>
+       <button class="spp-btn spp-btn-g" id="spFavBtn"><span class="fhrt">${fav?'♥':'♡'}</span> <span id="spFavLbl">${fav?'Favori':'Ajouter'}</span></button>`;
+  $('seriesPanel').innerHTML=`
+    <div class="spp-wrap">
+      <div class="spp-left">
+        <div class="spp-aura" id="sppAura" style="background-image:url('${esc(cover)}')"></div>
+        <button class="spp-close" id="spClose">✕</button>
+        <div class="spp-lc">
+          ${cover?`<img class="spp-cover" src="${esc(cover)}" alt="" loading="lazy" onerror="this.style.display='none'">`
+                 :`<div class="spp-nocover">🎬</div>`}
+          <div class="spp-kicker">${esc(kicker)}</div>
+          <h3 class="spp-title">${esc(item.title)}</h3>
+          ${item.category?`<div class="spp-meta">${esc(item.category)}</div>`:''}
+          <p class="spp-plot">${esc(item.plot||'')}</p>
+          <div class="spp-acts" id="spActs">${acts}</div>
+        </div>
+      </div>
+      <div class="spp-right" id="spRight">
+        ${loading?`<div class="spp-loading"><div class="spp-spin"></div> Chargement des épisodes…</div>`:''}
+      </div>
+    </div>`;
+  $('spClose').addEventListener('click', closePanel);
+  $('spPlayBtn')?.addEventListener('click',()=>{ closePanel(); playItem(item); });
+  $('spFavBtn')?.addEventListener('click',()=>{ updatePanelFav(item); });
+  focusPanel();
+}
+
+function updatePanelFav(item){
+  const isnow=toggleFav(item);
+  const btn=$('spFavBtn');
+  if(!btn) return;
+  btn.classList.toggle('is-fav',isnow);
+  btn.querySelector('.fhrt').textContent=isnow?'♥':'♡';
+  const lbl=$('spFavLbl');
+  if(lbl) lbl.textContent=isnow?'Favori':'Ajouter';
+}
+
+function renderPanelFull(){
+  const item=S.panelItem;
+  const smap=S.panelSmap;
+  const smeta=S.panelSmeta;
+  const keys=Object.keys(smap).sort((a,b)=>Number(a)-Number(b));
+  S.panelSelSeason=keys[0]||null;
+  S.panelEps=S.panelSelSeason?smap[S.panelSelSeason]:[];
+  const right=$('spRight');
+  if(!right) return;
+  if(!keys.length){ right.innerHTML=`<div class="spp-noep">Aucun épisode disponible.</div>`; focusPanel(); return; }
+  const totalEps=Object.values(smap).reduce((n,a)=>n+a.length,0);
+  const tabsHtml=keys.length>1?`<div class="spp-tabs">${keys.map((sk,i)=>{
+    const m=smeta.find(x=>String(x.num)===sk);
+    const lbl=m?m.name:`Saison ${sk}`;
+    const cnt=smap[sk]?.length||0;
+    return `<button class="spp-tab${i===0?' active':''}" data-sk="${esc(sk)}">${esc(lbl)}<span class="spp-tab-cnt">${cnt} ép.</span></button>`;
+  }).join('')}</div>`:keys.length===1?`<div class="spp-onesaison">${smeta[0]?.name||'Saison 1'} — ${totalEps} épisode${totalEps>1?'s':''}</div>`:'';
+  right.innerHTML=`<div class="spp-rtitle">Épisodes</div>${tabsHtml}<div class="spp-eplist" id="spEpList"></div>`;
+  right.querySelectorAll('.spp-tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const sk=btn.dataset.sk;
+      S.panelSelSeason=sk; S.panelEps=smap[sk]||[]; S.panelEpIdx=0; S.panelZone='eps';
+      right.querySelectorAll('.spp-tab').forEach(t=>t.classList.toggle('active',t.dataset.sk===sk));
+      renderEpList();
+      focusPanel();
+    });
+  });
+  renderEpList();
+  S.panelZone='eps';
+  focusPanel();
+}
+
+function renderEpList(){
+  const list=$('spEpList'); if(!list) return;
+  const eps=S.panelEps; const item=S.panelItem;
+  if(!eps.length){ list.innerHTML=`<div class="spp-noep">Aucun épisode dans cette saison.</div>`; return; }
+  const sk=S.panelSelSeason||'1';
+  list.innerHTML=eps.map((ep,idx)=>{
+    const code=`S${String(sk).padStart(2,'0')}E${String(ep.episode_num).padStart(2,'0')}`;
+    const progK=`${item.series_id}||${code}`;
+    const pct=getProg()[progK]?.pct||0;
+    const done=pct>=90;
+    const hasUrl=!!ep.url;
+    return `<button class="spp-ep${done?' spp-ep--done':''}${!hasUrl?' spp-ep--disabled':''}"
+      data-idx="${idx}" ${!hasUrl?'disabled':''}>
+      ${ep.thumb?`<img class="spp-ep-img" src="${esc(ep.thumb)}" alt="" loading="lazy">`:
+                 `<div class="spp-ep-img spp-ep-img--blank">🎬</div>`}
+      <div class="spp-ep-info">
+        <span class="spp-ep-code">${esc(code)}</span>
+        <span class="spp-ep-title">${esc(ep.title||'Sans titre')}</span>
+        ${ep.duration?`<span class="spp-ep-dur">${esc(ep.duration)}</span>`:''}
+      </div>
+      <div class="spp-ep-right">
+        ${done?`<span class="spp-check">✓</span>`:pct>2?`<span class="spp-pct">${Math.round(pct)}%</span>`:''}
+        <span class="spp-play">▶</span>
+      </div>
+    </button>
+    ${pct>2?`<div class="spp-prog"><div class="spp-prog-fill" style="width:${Math.min(pct,100)}%"></div></div>`:''}`;
+  }).join('');
+  list.querySelectorAll('.spp-ep:not([disabled])').forEach(btn=>{
+    btn.addEventListener('click',()=>{ playPanelEp(Number(btn.dataset.idx)); });
+  });
+}
+
+function playPanelEp(idx){
+  const ep=S.panelEps[idx]; if(!ep?.url) return;
+  const item=S.panelItem;
+  const sk=S.panelSelSeason||'1';
+  const code=`S${String(sk).padStart(2,'0')}E${String(ep.episode_num).padStart(2,'0')}`;
+  const progKey=`${item.series_id}||${code}`;
+  pushHist(item);
+  // Build all episodes list for player prev/next
+  const smap=S.panelSmap; const keys=Object.keys(smap).sort((a,b)=>Number(a)-Number(b));
+  const allEps=[]; keys.forEach(s=>(smap[s]||[]).forEach(e=>allEps.push({season:s,ep:e})));
+  const curIdx=allEps.findIndex(x=>x.season===sk&&x.ep.episode_num===ep.episode_num);
+  const playerItem={
+    type:'series', series_id:item.series_id,
+    title:item.title, episode_label:code, episode_title:ep.title||'',
+    category:item.category||'', stream_icon:ep.thumb||item.image||'',
+    stream_url:ep.url, url:ep.url, plot:ep.plot||item.plot||'',
+    progress_key:progKey,
+    all_episodes:allEps.map(x=>({
+      season:x.season, episode_num:x.ep.episode_num,
+      title:x.ep.title, url:x.ep.url, thumb:x.ep.thumb, plot:x.ep.plot,
+      progress_key:`${item.series_id}||S${String(x.season).padStart(2,'0')}E${String(x.ep.episode_num).padStart(2,'0')}`
+    })),
+    current_ep_index:curIdx
+  };
+  sessionStorage.setItem('iptv_current_item',JSON.stringify(playerItem));
+  window.location.href='player.html';
+}
+
+function focusPanel(){
+  clearFoc();
+  const panel=$('seriesPanel'); if(!panel) return;
+  if(S.panelZone==='acts'){
+    const btns=panel.querySelectorAll('.spp-acts .spp-btn');
+    btns[Math.min(S.panelActIdx,btns.length-1)]?.classList.add('foc');
+  } else if(S.panelZone==='tabs'){
+    panel.querySelectorAll('.spp-tab')[S.panelTabIdx]?.classList.add('foc');
+  } else {
+    const eps=panel.querySelectorAll('.spp-ep:not([disabled])');
+    const el=eps[S.panelEpIdx];
+    if(el){ el.classList.add('foc'); el.scrollIntoView({block:'nearest'}); }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 //  SEARCH
 // ═══════════════════════════════════════════════════════════════════
 let _searchTimer;
@@ -1211,7 +1721,7 @@ $('sinput').addEventListener('input',e=>{
     c.innerHTML='';
     res.forEach((item,i)=>{
       const card=mkCard(item,-1,i,item.isLive);
-      card.onclick=()=>{ item.series_id?showDetail(item):playItem(item); };
+      card.onclick=()=>activateItem(item);
       c.appendChild(card);
     });
   },300);
