@@ -56,7 +56,11 @@ html,body{
 .ni .ico{font-size:16px}
 .ni:hover{background:rgba(255,255,255,.12)}
 .ni.active{background:rgba(255,255,255,.15);color:#FFF;font-weight:600}
-.ni.foc{background:rgba(255,255,255,.88);color:#111 !important}
+.ni.foc{
+  background:#FFF;color:#111 !important;
+  box-shadow:0 0 0 2px rgba(255,255,255,.6),0 4px 16px rgba(0,0,0,.5);
+  transform:scale(1.06);font-weight:700;
+}
 
 #nav-right{display:flex;align-items:center;gap:12px;flex-shrink:0}
 #clock{font-size:14px;color:rgba(255,255,255,.65);font-variant-numeric:tabular-nums}
@@ -79,7 +83,7 @@ html,body{
 
 /* ─── HERO ───────────────────────────────────────────────────────── */
 #hero{
-  position:relative;width:100%;height:500px;  /* ~46% de 1080px */
+  position:relative;width:100%;height:380px;
   overflow:hidden;flex-shrink:0
 }
 .hbg{
@@ -516,6 +520,8 @@ function cleanCat(c)  { return (c||'').replace(/^(SRS|VOD)\s*\|\s*/i,'').trim();
 
 function normalise(item) {
   if (!item?.title && !item?.name) return null;
+  const rawTitle = item.title || item.name || '';
+  if (/\bvostfr\b/i.test(rawTitle)) return null;
   const url = item.stream_url || item.url || '';
   const sid = item.series_id || null;
   const vid = item.stream_id  || null;
@@ -859,6 +865,12 @@ function nav(dir) {
     }
     else if (dir==='d') S.setIdx=Math.min(SET_ROWS.length-1,S.setIdx+1);
     focus(); return;
+  }
+
+  // ── SEARCH ──
+  if (z==='search') {
+    if (dir==='u') { S.zone='nav'; S.navIdx=NAV_ITEMS.indexOf('search'); focus(); }
+    return;
   }
 }
 
