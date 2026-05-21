@@ -1321,10 +1321,15 @@ function playEp(ep) {
 }
 
 function openVlc(url, title, isLive, itemRef) {
+  const httpUrl = url.replace(/^https?:\/\//i, 'http://');
+  // Android TV APK : appel direct — pas de relay via player.html (1 seul BACK)
+  if (window.AndroidBridge?.openInVlc) {
+    try { AndroidBridge.openInVlc(httpUrl, title || '', isLive || false); return; } catch(e) {}
+  }
+  // Fallback navigateur / non-TV : player.html avec lecteur HTML5
   const playerItem = {
     title:         title || 'Lecture',
-    stream_url:    url,
-    url:           url,
+    stream_url:    httpUrl, url: httpUrl,
     type:          isLive ? 'live' : (itemRef?.series_id ? 'series' : 'vod'),
     plot:          itemRef?.plot || '',
     category:      itemRef?.category || '',
@@ -1667,9 +1672,14 @@ function playPanelEp(idx){
   const item=S.panelItem;
   const sk=S.panelSelSeason||'1';
   const code=`S${String(sk).padStart(2,'0')}E${String(ep.episode_num).padStart(2,'0')}`;
-  const progKey=`${item.series_id}||${code}`;
+  const httpUrl=ep.url.replace(/^https?:\/\//i,'http://');
   pushHist(item);
-  // Build all episodes list for player prev/next
+  // Android TV APK : appel direct VLC (1 seul BACK pour revenir)
+  if (window.AndroidBridge?.openInVlc) {
+    const epTitle=`${item.title} — ${code}${ep.title?' '+ep.title:''}`;
+    try { AndroidBridge.openInVlc(httpUrl, epTitle, false); return; } catch(e) {}
+  }
+  // Fallback navigateur : player.html avec prev/next épisodes
   const smap=S.panelSmap; const keys=Object.keys(smap).sort((a,b)=>Number(a)-Number(b));
   const allEps=[]; keys.forEach(s=>(smap[s]||[]).forEach(e=>allEps.push({season:s,ep:e})));
   const curIdx=allEps.findIndex(x=>x.season===sk&&x.ep.episode_num===ep.episode_num);
@@ -1677,11 +1687,12 @@ function playPanelEp(idx){
     type:'series', series_id:item.series_id,
     title:item.title, episode_label:code, episode_title:ep.title||'',
     category:item.category||'', stream_icon:ep.thumb||item.image||'',
-    stream_url:ep.url, url:ep.url, plot:ep.plot||item.plot||'',
-    progress_key:progKey,
+    stream_url:httpUrl, url:httpUrl, plot:ep.plot||item.plot||'',
+    progress_key:`${item.series_id}||${code}`,
     all_episodes:allEps.map(x=>({
       season:x.season, episode_num:x.ep.episode_num,
-      title:x.ep.title, url:x.ep.url, thumb:x.ep.thumb, plot:x.ep.plot,
+      title:x.ep.title, url:x.ep.url?.replace(/^https?:\/\//i,'http://'),
+      thumb:x.ep.thumb, plot:x.ep.plot,
       progress_key:`${item.series_id}||S${String(x.season).padStart(2,'0')}E${String(x.ep.episode_num).padStart(2,'0')}`
     })),
     current_ep_index:curIdx
