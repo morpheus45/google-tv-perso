@@ -29,28 +29,45 @@
 
 html,body{
   width:1920px;height:1080px;
-  background:var(--bg);color:var(--text);
+  background:#060608;color:var(--text);
   font-family:'Google Sans','Roboto','Noto Sans',system-ui,sans-serif;
   font-size:16px;overflow:hidden;user-select:none;-webkit-user-select:none
 }
 
-/* ─── AURA — Ambient background fullscreen (derrière tout) ──────── */
+/* ─── AURA — Ambient background cinématique ─────────────────────── */
+/*
+  Couche 0 : fond fixe avec dégradés colorés statiques — toujours visibles
+             avant même le chargement des images.
+  Couche 1 : images des affiches floutées qui crossfadent (aura-1 / aura-2)
+  Couche 2 : overlay sombre léger pour préserver la lisibilité du texte
+*/
 #aura-bg{
   position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
-}
-#aura-bg::after{
-  content:'';position:absolute;inset:0;z-index:1;
+  /* Atmosphère de base : bleu Google top-gauche, violet profond bottom-droit */
   background:
-    radial-gradient(ellipse at 50% -10%,rgba(0,0,0,.1) 0%,rgba(0,0,0,.72) 65%),
-    linear-gradient(to top,rgba(8,8,8,1) 0%,rgba(8,8,8,.3) 40%,transparent 70%);
+    radial-gradient(ellipse 140% 70% at 18% -5%,  rgba(66,133,244,.22)  0%, transparent 52%),
+    radial-gradient(ellipse 90%  80% at 88% 105%,  rgba(110,72,220,.14)  0%, transparent 55%),
+    radial-gradient(ellipse 60%  50% at 55%  50%,  rgba(20, 24, 50,.40)  0%, transparent 68%),
+    #060608;
 }
+
+/* Overlay sombre ALLÉGÉ — ne pas écraser la couleur des images */
+#aura-bg::after{
+  content:'';position:absolute;inset:0;z-index:2;
+  background:
+    linear-gradient(to top, rgba(6,6,8,.96) 0%, rgba(6,6,8,.05) 28%, transparent 52%),
+    radial-gradient(ellipse 110% 60% at 50% 0%, rgba(0,0,0,.20) 0%, transparent 65%);
+}
+
+/* Couches d'images : plus lumineuses et plus saturées qu'avant */
 .aura-layer{
-  position:absolute;inset:-8%;
+  position:absolute;inset:-12%;z-index:1;
   background-size:cover;background-position:center;
-  filter:blur(90px) brightness(.3) saturate(1.6);
-  transition:opacity 1.4s ease;
+  filter:blur(75px) brightness(.55) saturate(2.2);
+  transition:opacity 1.8s cubic-bezier(.4,0,.2,1);
   will-change:opacity;
 }
+/* Démarre semi-visible pour que l'atmosphère de base soit perçue */
 #aura-1{opacity:0}
 #aura-2{opacity:0}
 
@@ -322,7 +339,11 @@ html,body{
 
 /* ─── LOADING ────────────────────────────────────────────────────── */
 #loading{
-  position:fixed;inset:0;background:#080808;
+  position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 140% 70% at 18% -5%, rgba(66,133,244,.18) 0%, transparent 52%),
+    radial-gradient(ellipse 90%  80% at 88% 105%, rgba(110,72,220,.11) 0%, transparent 55%),
+    #060608;
   display:flex;flex-direction:column;align-items:center;
   justify-content:center;z-index:100;gap:28px
 }
