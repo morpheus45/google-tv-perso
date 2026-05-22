@@ -87,7 +87,8 @@
                 android:paddingEnd="24dp"
                 android:focusable="true"
                 android:clickable="true"
-                android:focusableInTouchMode="false" />
+                android:focusableInTouchMode="false"
+                android:defaultFocusHighlightEnabled="false" />
 
             <!-- Title -->
             <TextView
@@ -126,24 +127,33 @@
 
         </LinearLayout>
 
-        <!-- ── Centre play / pause ────────────────────────────────────
-             Uses TextView (not Button) to avoid the Android yellow-
-             focus-highlight ring. The circular background (normal /
-             focused) is applied in Java with GradientDrawable so the
-             focus style is fully under our control.
-        ─────────────────────────────────────────────────────────────── -->
+        <!--
+          Centre play overlay — VISIBLE UNIQUEMENT EN PAUSE (masqué pendant la lecture).
+          Même comportement que la VOD web : playOverlayBtn affiché seulement quand
+          video.paused. Le fond est bleu Google (#4285F4) comme dans player.css.
+
+          IMPORTANT : on n'utilise PAS de Button (widget Android) pour éviter le halo
+          jaune Android TV. Le fond circulaire et les focus states sont gérés en Java
+          via GradientDrawable — zéro style système.
+
+          On évite aussi les caractères emoji (⏸ U+23F8 = emoji couleur) : on utilise
+          le triangle plein U+25B6 + sélecteur de variante texte U+FE0E pour forcer
+          le rendu monochrome (respecte textColor blanc).
+        -->
         <TextView
             android:id="@+id/vlc_btn_play"
-            android:layout_width="88dp"
-            android:layout_height="88dp"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
             android:layout_gravity="center"
             android:gravity="center"
-            android:text="⏸"
-            android:textSize="34sp"
+            android:text="&#x25B6;&#xFE0E;"
+            android:textSize="28sp"
             android:textColor="#FFFFFFFF"
             android:focusable="true"
             android:clickable="true"
-            android:focusableInTouchMode="false" />
+            android:focusableInTouchMode="false"
+            android:defaultFocusHighlightEnabled="false"
+            android:visibility="gone" />
 
         <!-- ── Bottom progress bar ───────────────────────────────────── -->
         <LinearLayout

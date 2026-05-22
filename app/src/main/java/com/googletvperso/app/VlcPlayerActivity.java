@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.view.KeyEvent;
 import android.view.Surface;
 import android.view.TextureView;
@@ -209,7 +210,9 @@ public class VlcPlayerActivity extends Activity
                     runOnUiThread(() -> {
                         loadingView.setVisibility(View.GONE);
                         errorView.setVisibility(View.GONE);
-                        btnPlay.setText("⏸");
+                        // Masquer le bouton centre (même comportement que le player VOD :
+                        // le play-overlay n'est visible que quand la vidéo est pausée).
+                        btnPlay.setVisibility(View.GONE);
                         scheduleHide();
                         handler.post(progressUpdater);
                     });
@@ -217,7 +220,8 @@ public class VlcPlayerActivity extends Activity
                 case MediaPlayer.Event.Paused:
                     runOnUiThread(() -> {
                         handler.removeCallbacks(progressUpdater);
-                        btnPlay.setText("▶");
+                        // Montrer le bouton centre avec icône de lecture (non-emoji)
+                        btnPlay.setVisibility(View.VISIBLE);
                         showControls();
                     });
                     break;
@@ -235,7 +239,7 @@ public class VlcPlayerActivity extends Activity
                 case MediaPlayer.Event.EndReached:
                     runOnUiThread(() -> {
                         handler.removeCallbacks(progressUpdater);
-                        btnPlay.setText("▶");
+                        btnPlay.setVisibility(View.VISIBLE);
                         showControls();
                     });
                     break;
@@ -366,7 +370,6 @@ public class VlcPlayerActivity extends Activity
         controlsShown = true;
         controlsLayout.setVisibility(View.VISIBLE);
         scheduleHide();
-        btnPlay.requestFocus();
     }
 
     private void hideControls() {
@@ -378,25 +381,34 @@ public class VlcPlayerActivity extends Activity
     // Aucun widget Button → zéro halo jaune Android TV.
 
     private void setupPlayerButtons() {
+        // Désactiver le halo focus jaune système (API 26+)
+        if (Build.VERSION.SDK_INT >= 26) {
+            btnPlay.setDefaultFocusHighlightEnabled(false);
+            btnBack.setDefaultFocusHighlightEnabled(false);
+        }
+
+        // Style initial des boutons
         setPlayButtonStyle(false);
         setBackButtonStyle(false);
 
-        btnPlay.setOnFocusChangeListener((v, focused) -> setPlayButtonStyle(focused));
         btnBack.setOnFocusChangeListener((v, focused) -> setBackButtonStyle(focused));
     }
 
     private void setPlayButtonStyle(boolean focused) {
+        // Bouton bleu Google, identique au .play-overlay du player VOD (player.css)
         GradientDrawable d = new GradientDrawable();
         d.setShape(GradientDrawable.OVAL);
         if (focused) {
-            d.setColor(0xDD000000);
-            d.setStroke(dp(3), 0xFFFFFFFF);
+            d.setColor(0xFF4285F4);                      // bleu plein au focus
+            d.setStroke(dp(3), 0xFFFFFFFF);              // anneau blanc
             btnPlay.setAlpha(1f);
         } else {
-            d.setColor(0x88000000);
-            d.setStroke(dp(1), 0x44FFFFFF);
-            btnPlay.setAlpha(0.85f);
+            d.setColor(0xE04285F4);                      // rgba(66,133,244,.88) — copie player.css
+            d.setStroke(0, 0);
+            btnPlay.setAlpha(1f);
         }
+        // Box-shadow simulé : impossible en Java natif, compensé par elevation
+        btnPlay.setElevation(dp(12));
         btnPlay.setBackground(d);
     }
 
