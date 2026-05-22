@@ -8,12 +8,12 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.graphics.drawable.GradientDrawable;
 import android.view.KeyEvent;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -58,8 +58,8 @@ public class VlcPlayerActivity extends Activity
     private ProgressBar loadingView;
     private TextView    errorView;
     private View        controlsLayout;
-    private Button      btnBack;
-    private Button      btnPlay;
+    private TextView    btnBack;
+    private TextView    btnPlay;
     private TextView    titleView;
     private TextView    liveBadge;
     private SeekBar     seekBar;
@@ -136,6 +136,9 @@ public class VlcPlayerActivity extends Activity
 
         textureView.setOnClickListener(v -> toggleControls());
         controlsLayout.setOnClickListener(v -> toggleControls());
+
+        // Style cinématique des boutons (pas de halo jaune Android)
+        setupPlayerButtons();
 
         // Initialiser VLC AVANT d'enregistrer le listener TextureView
         initVlc();
@@ -363,11 +366,55 @@ public class VlcPlayerActivity extends Activity
         controlsShown = true;
         controlsLayout.setVisibility(View.VISIBLE);
         scheduleHide();
+        btnPlay.requestFocus();
     }
 
     private void hideControls() {
         controlsShown = false;
         controlsLayout.setVisibility(View.GONE);
+    }
+
+    // ── Boutons cinématiques : cercle / pilule via GradientDrawable ──
+    // Aucun widget Button → zéro halo jaune Android TV.
+
+    private void setupPlayerButtons() {
+        setPlayButtonStyle(false);
+        setBackButtonStyle(false);
+
+        btnPlay.setOnFocusChangeListener((v, focused) -> setPlayButtonStyle(focused));
+        btnBack.setOnFocusChangeListener((v, focused) -> setBackButtonStyle(focused));
+    }
+
+    private void setPlayButtonStyle(boolean focused) {
+        GradientDrawable d = new GradientDrawable();
+        d.setShape(GradientDrawable.OVAL);
+        if (focused) {
+            d.setColor(0xDD000000);
+            d.setStroke(dp(3), 0xFFFFFFFF);
+            btnPlay.setAlpha(1f);
+        } else {
+            d.setColor(0x88000000);
+            d.setStroke(dp(1), 0x44FFFFFF);
+            btnPlay.setAlpha(0.85f);
+        }
+        btnPlay.setBackground(d);
+    }
+
+    private void setBackButtonStyle(boolean focused) {
+        GradientDrawable d = new GradientDrawable();
+        d.setCornerRadius(dp(24));
+        if (focused) {
+            d.setColor(0xFFFFFFFF);
+            btnBack.setTextColor(0xFF111111);
+        } else {
+            d.setColor(0x44FFFFFF);
+            btnBack.setTextColor(0xFFFFFFFF);
+        }
+        btnBack.setBackground(d);
+    }
+
+    private int dp(int val) {
+        return Math.round(val * getResources().getDisplayMetrics().density);
     }
 
     private void scheduleHide() {
