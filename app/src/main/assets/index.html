@@ -1382,7 +1382,7 @@ function nav(dir) {
     const rowEl=document.querySelector(`#ri${S.rowIdx}`);
     const cnt=rowEl?rowEl.querySelectorAll('.card').length:0;
     if (dir==='u') {
-      if (S.rowIdx===0) { S.zone='hero'; S.hBtn=0; }
+      if (S.rowIdx===0) { S.zone='nav'; S.navIdx=Math.max(0,NAV_ITEMS.indexOf(S.sec)); }
       else { S.rowIdx--; S.cardIdx=0; }
     } else if (dir==='d') {
       if (S.rowIdx<S.rows.length-1) { S.rowIdx++; S.cardIdx=0; }
@@ -1395,7 +1395,7 @@ function nav(dir) {
   }
 
   if (z==='grid') {
-    const cols=Math.floor(($('grid-wrap').offsetWidth)/122)||8;
+    const cols=Math.max(1,Math.round(($('grid-wrap').offsetWidth+12)/(130+12)))||8;
     const cnt=$('grid-wrap').querySelectorAll('.card').length;
     if (dir==='u') {
       if (S.gridIdx<cols) { S.zone='nav'; S.navIdx=NAV_ITEMS.indexOf(S.sec)||0; }
