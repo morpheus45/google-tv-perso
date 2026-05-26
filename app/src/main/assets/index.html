@@ -1359,13 +1359,14 @@ function nav(dir) {
   }
 
   if (z==='nav') {
-    if (dir==='l') S.navIdx=Math.max(0,S.navIdx-1);
-    else if (dir==='r') S.navIdx=Math.min(NAV_ITEMS.length-1,S.navIdx+1);
+    if (dir==='l') { S.navIdx=Math.max(0,S.navIdx-1); previewSection(NAV_ITEMS[S.navIdx]); }
+    else if (dir==='r') { S.navIdx=Math.min(NAV_ITEMS.length-1,S.navIdx+1); previewSection(NAV_ITEMS[S.navIdx]); }
     else if (dir==='d') {
-      if (S.sec==='home') { S.zone='hero'; S.hBtn=0; }
-      else if (S.sec==='grid'||S.sec==='movies'||S.sec==='shows'||S.sec==='live') { S.zone='grid'; }
-      else if (S.sec==='search') { S.zone='search'; }
-      else if (S.sec==='settings') { S.zone='settings'; }
+      const sec=S.sec;
+      if (sec==='home')                                   { S.zone='hero';     S.hBtn=0; }
+      else if (sec==='movies'||sec==='shows'||sec==='live') { S.zone='grid';     S.gridIdx=0; }
+      else if (sec==='search')                            { S.zone='search'; }
+      else if (sec==='settings')                          { S.zone='settings'; }
     }
     focus(); return;
   }
@@ -1492,38 +1493,33 @@ function back() {
 
   const z = S.zone;
 
-  // Depuis les rangées home → remonte au hero
-  if (z === 'row') { S.zone = 'hero'; S.hBtn = 0; focus(); return; }
+  // Depuis la nav → retour système (ne rien faire, Android gère l'exit)
+  if (z === 'nav') return;
 
-  // Depuis le hero ou la nav en vue home → remonte à la nav
-  if (z === 'hero' || z === 'nav') {
-    if (S.sec === 'home') {
-      if (z === 'hero') { S.zone = 'nav'; S.navIdx = 0; focus(); return; }
-      // nav en home → passer au hero (permet de revenir dans le contenu)
-      S.zone = 'hero'; S.hBtn = 0; focus(); return;
-    }
-    // En vue grid (films/séries/live), nav → grille
-    if (z === 'nav') { S.zone = 'grid'; S.gridIdx = 0; focus(); return; }
-  }
-
-  // Depuis la grille → remonter à la nav (conserver la section active)
-  if (z === 'grid') {
-    S.zone = 'nav';
-    S.navIdx = Math.max(0, NAV_ITEMS.indexOf(S.sec));
-    focus(); return;
-  }
-
-  // Paramètres / Recherche → retour à la nav
-  if (z === 'settings' || z === 'search') {
-    S.zone = 'nav';
-    S.navIdx = Math.max(0, NAV_ITEMS.indexOf(S.sec));
-    focus(); return;
-  }
+  // Depuis n'importe quelle zone de contenu → toujours revenir à la nav
+  S.zone  = 'nav';
+  S.navIdx = Math.max(0, NAV_ITEMS.indexOf(S.sec));
+  focus();
 }
 
 function toggleNav() {
-  if (S.zone==='nav') { S.zone='hero'; focus(); }
-  else { S.zone='nav'; S.navIdx=NAV_ITEMS.indexOf(S.sec)||0; focus(); }
+  if (S.zone==='nav') { S.zone = S.sec==='home' ? 'hero' : 'grid'; focus(); }
+  else { S.zone='nav'; S.navIdx=Math.max(0,NAV_ITEMS.indexOf(S.sec)); focus(); }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SECTION PREVIEW (nav L/R — affiche le contenu sans changer de zone)
+// ═══════════════════════════════════════════════════════════════════
+function previewSection(sec) {
+  S.sec = sec;
+  qAll('.ni').forEach(el => el.classList.toggle('active', el.dataset.s === sec));
+  $('home-view').style.display     = sec === 'home'                                   ? 'flex' : 'none';
+  $('grid-view').style.display     = (sec==='movies'||sec==='shows'||sec==='live')    ? 'flex' : 'none';
+  $('search-view').style.display   = sec === 'search'                                 ? 'flex' : 'none';
+  $('settings-view').style.display = sec === 'settings'                               ? 'flex' : 'none';
+  if      (sec === 'movies') renderGrid(S.allVod    || S.allItems.filter(i => !i.series_id && !i.isLive), false);
+  else if (sec === 'shows')  renderGrid(S.allSeries || S.allItems.filter(i =>  i.series_id),              false);
+  else if (sec === 'live')   renderGrid(groupLiveItems(S.liveItems), true);
 }
 
 // ═══════════════════════════════════════════════════════════════════
