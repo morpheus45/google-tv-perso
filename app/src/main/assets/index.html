@@ -60,81 +60,71 @@ html,body{
     radial-gradient(ellipse 110% 60% at 50% 0%, rgba(0,0,0,.20) 0%, transparent 65%);
 }
 
-/* Couches d'images : très atténuées, juste une teinte de couleur */
-.aura-layer{
-  position:absolute;inset:-12%;z-index:1;
-  background-size:cover;background-position:center;
-  filter:blur(120px) brightness(.08) saturate(1.2);
-  transition:opacity 2.2s cubic-bezier(.4,0,.2,1);
-  will-change:opacity;
-}
+/* Aura désactivée pour fluidité Android TV */
+.aura-layer{display:none}
 #aura-1{opacity:0}
 #aura-2{opacity:0}
 
 /* ─── APP SHELL ──────────────────────────────────────────────────── */
 #app{position:relative;width:1920px;height:1080px;overflow:hidden;z-index:1}
 
-/* ─── TOP NAV — Google TV Pill centré ───────────────────────────── */
+/* ─── TOP NAV — centrage garanti par position absolute ──────────── */
+/* PAS de backdrop-filter = bien plus fluide sur Android WebView     */
 #topnav{
   position:absolute;top:var(--safe);left:0;right:0;
-  display:flex;align-items:center;justify-content:center;
-  gap:8px;z-index:20;pointer-events:none;
+  height:var(--nav-h);z-index:20;pointer-events:none;
 }
-/* Le logo devient juste une icône circulaire à gauche du pill */
+
+/* Logo : cercle en haut-gauche */
 .nav-logo{
+  position:absolute;left:var(--safe);top:50%;transform:translateY(-50%);
   display:flex;align-items:center;justify-content:center;
-  width:40px;height:40px;border-radius:50%;flex-shrink:0;
-  background:rgba(14,24,42,.85);
-  backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
-  border:1px solid rgba(255,255,255,.08);
-  box-shadow:0 4px 16px rgba(0,0,0,.45);
+  width:38px;height:38px;border-radius:50%;
+  background:rgba(10,18,38,.92);
+  border:1px solid rgba(255,255,255,.10);
   pointer-events:auto;cursor:pointer;
 }
 .nav-logo svg{width:20px;height:20px}
 .nav-logo-text{display:none}
 
-/* ── Pilule centrale — tout dedans ──────────────────────────────── */
+/* Pill centrale — VRAIMENT centrée grâce à left:50% + translateX(-50%) */
 #nav-items{
-  display:flex;align-items:center;gap:1px;
-  background:rgba(14,24,42,.88);
-  backdrop-filter:blur(28px) saturate(160%);
-  -webkit-backdrop-filter:blur(28px) saturate(160%);
+  position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  display:flex;align-items:center;gap:2px;
+  background:rgba(10,18,38,.92);
   border-radius:50px;
-  padding:4px 5px;
-  border:1px solid rgba(255,255,255,.08);
-  box-shadow:0 4px 24px rgba(0,0,0,.55);
+  padding:4px 6px;
+  border:1px solid rgba(255,255,255,.10);
   pointer-events:auto;
+  white-space:nowrap;
 }
 
 .ni{
   display:inline-flex;align-items:center;gap:5px;
-  padding:7px 14px;border-radius:40px;
+  padding:7px 16px;border-radius:40px;
   font-size:13px;font-weight:500;cursor:pointer;outline:none;
-  color:rgba(255,255,255,.60);
-  transition:background .18s,color .18s;
-  white-space:nowrap;flex-shrink:0;letter-spacing:.1px;
-  position:relative;
+  color:rgba(255,255,255,.62);
+  transition:background .12s,color .12s;
+  white-space:nowrap;flex-shrink:0;
 }
-.ni .ico{font-size:13px;transition:opacity .18s;line-height:1}
 .ni.active{background:rgba(255,255,255,.14);color:#FFF;font-weight:600;}
-.ni.foc{
-  background:rgba(255,255,255,.28) !important;
-  color:#FFF !important;font-weight:700;
-  transform:none !important;box-shadow:none !important;
-}
+.ni.foc{background:rgba(255,255,255,.26)!important;color:#FFF!important;font-weight:700;}
 
-/* ── Droite : settings seulement ────────────────────────────────── */
-#nav-right{display:flex;align-items:center;gap:8px;flex-shrink:0;pointer-events:auto;}
-#clock{display:none;} /* caché pour gagner de la place dans le pill centré */
+/* Settings : cercle en haut-droite */
+#nav-right{
+  position:absolute;right:var(--safe);top:50%;transform:translateY(-50%);
+  display:flex;align-items:center;gap:8px;
+  pointer-events:auto;
+}
+#clock{display:none;}
 .nav-icon{
   width:38px;height:38px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  background:rgba(14,24,42,.85);
-  backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
-  color:rgba(255,255,255,.75);font-size:17px;
-  cursor:pointer;outline:none;transition:background .18s,color .18s;flex-shrink:0;
-  border:1px solid rgba(255,255,255,.08);
-  box-shadow:0 4px 16px rgba(0,0,0,.45);
+  background:rgba(10,18,38,.92);
+  border:1px solid rgba(255,255,255,.10);
+  color:rgba(255,255,255,.78);font-size:17px;
+  cursor:pointer;outline:none;
 }
 .nav-icon.foc{background:rgba(255,255,255,.90);color:#111;}
 
@@ -206,7 +196,7 @@ html,body{
 .btn-g{
   background:rgba(255,255,255,.11);color:#FFF;
   border:1.5px solid rgba(255,255,255,.22);
-  backdrop-filter:blur(12px);
+  
 }
 .btn.foc,.btn:focus{
   transform:scale(1.07);
@@ -236,7 +226,7 @@ html,body{
 .card{
   flex-shrink:0;width:var(--card-w);border-radius:var(--card-r);overflow:hidden;
   cursor:pointer;position:relative;
-  transition:transform .2s cubic-bezier(.34,1.4,.64,1),box-shadow .2s ease,border-color .15s;
+  transition:transform .1s ease,box-shadow .1s ease;
   outline:none;
   background:rgba(255,255,255,.06);
   border:1px solid rgba(255,255,255,.07);
@@ -252,16 +242,15 @@ html,body{
 }
 .ccat{font-size:9px;color:rgba(255,255,255,.36);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card.foc{
-  transform:scale(1.08);
-  box-shadow:0 0 0 2px var(--accent),0 8px 24px var(--glow),0 4px 12px rgba(0,0,0,.95);
-  z-index:3;border-color:rgba(66,133,244,.4);
+  box-shadow:0 0 0 2px var(--accent);
+  z-index:3;
 }
 /* Badge type */
 .ctype-badge{
   position:absolute;top:4px;left:4px;
   font-size:7px;font-weight:800;padding:1px 5px;border-radius:4px;
   letter-spacing:.4px;pointer-events:none;
-  background:rgba(0,0,0,.72);backdrop-filter:blur(8px);
+  background:rgba(0,0,0,.72);
 }
 .ctype-film{color:#7CB9FF}
 .ctype-serie{color:var(--green)}
@@ -302,7 +291,7 @@ html,body{
 /* ─── BOUTON FAVORI SUR CARTE ────────────────────────────────── */
 .card-fav-btn{
   position:absolute;bottom:6px;right:6px;z-index:3;
-  background:rgba(0,0,0,.55);backdrop-filter:blur(4px);
+  background:rgba(0,0,0,.55);
   border:none;color:rgba(255,255,255,.45);
   padding:4px 7px;border-radius:999px;
   cursor:pointer;font-size:13px;line-height:1;
@@ -330,7 +319,7 @@ html,body{
 /* ─── MODAL REPRISE ÉPISODE ──────────────────────────────────── */
 #resumeModal{
   display:none;position:fixed;inset:0;z-index:80;
-  background:rgba(0,0,0,.88);backdrop-filter:blur(18px);
+  background:rgba(0,0,0,.88);
   align-items:center;justify-content:center;
 }
 #resumeModal.on{display:flex}
@@ -359,7 +348,7 @@ html,body{
   background:rgba(255,255,255,.08);
   border:1.5px solid rgba(255,255,255,.14);
   border-radius:40px;padding:14px 26px;margin:0 52px 24px;max-width:620px;
-  backdrop-filter:blur(12px);
+  
   transition:border-color .15s,background .15s;
 }
 .search-box.foc{border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.12)}
@@ -391,7 +380,7 @@ html,body{
   display:none;position:fixed;inset:0;
   background:rgba(0,0,0,.88);z-index:50;
   align-items:center;justify-content:center;
-  backdrop-filter:blur(12px);
+  
 }
 #det.on{display:flex}
 .det-card{
@@ -440,7 +429,7 @@ html,body{
 /* ─── FORCE UPDATE OVERLAY ───────────────────────────────────────── */
 #force-update{
   display:none;position:fixed;inset:0;z-index:999;
-  background:rgba(0,0,0,.96);backdrop-filter:blur(20px);
+  background:rgba(0,0,0,.96);
   align-items:center;justify-content:center;
 }
 #force-update.on{display:flex}
@@ -473,8 +462,8 @@ html,body{
 #seriesPanel{
   display:none;position:fixed;inset:0;z-index:60;
   background:rgba(4,6,14,.95);
-  backdrop-filter:blur(28px) saturate(160%);
-  -webkit-backdrop-filter:blur(28px) saturate(160%);
+  
+  -webkit-
 }
 #seriesPanel.on{display:flex}
 .spp-wrap{width:100%;height:100%;display:flex;flex-direction:row}
@@ -570,7 +559,7 @@ html,body{
 /* ─── LIVE PICKER ─────────────────────────────────────────────────── */
 .live-picker{
   position:fixed;inset:0;z-index:70;
-  background:rgba(0,0,0,.86);backdrop-filter:blur(16px);
+  background:rgba(0,0,0,.86);
   display:flex;align-items:center;justify-content:center;
 }
 .live-picker__box{
@@ -1257,7 +1246,7 @@ async function loadContent() {
       if (S.zone !== 'hero') return;
       const p = S.heroPool;
       if (p.length) setHero(p[Math.floor(Math.random() * Math.min(p.length, 20))]);
-    }, 9000);
+    }, 30000); // 30s pour éviter les recharges fréquentes d'images
 
   } finally {
     $('loading').style.display = 'none';
@@ -1265,11 +1254,11 @@ async function loadContent() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  AURA — Ambient background crossfade
+//  AURA — désactivée pour fluidité (Android WebView)
 // ═══════════════════════════════════════════════════════════════════
 let _auraActive = 0;
 function updateAura(imgUrl) {
-  if (!imgUrl) return;
+  return; // désactivé
   const next = _auraActive === 1 ? 2 : 1;
   const el = $('aura-' + next);
   if (!el) return;
