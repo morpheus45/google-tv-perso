@@ -308,6 +308,66 @@ html,body{
 }
 .fpill.active{background:linear-gradient(135deg,var(--accent),#6A4DDB);color:#FFF;border-color:transparent;font-weight:700;}
 .fpill.foc{box-shadow:0 0 0 2.5px #FFF;transform:scale(1.07);}
+.fpill-sep{flex-shrink:0;width:1px;height:22px;background:rgba(255,255,255,.14);align-self:center;margin:0 3px;}
+/* ─── QUALITÉ BADGE SUR CARTE ────────────────────────────────── */
+.card-qual{
+  position:absolute;top:6px;right:6px;z-index:3;
+  background:rgba(66,133,244,.9);
+  padding:2px 7px;border-radius:6px;
+  font-size:9px;font-weight:800;color:#FFF;letter-spacing:.4px;
+  pointer-events:none;
+}
+/* ─── BOUTON FAVORI SUR CARTE ────────────────────────────────── */
+.card-fav-btn{
+  position:absolute;bottom:6px;right:6px;z-index:3;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(4px);
+  border:none;color:rgba(255,255,255,.45);
+  padding:4px 7px;border-radius:999px;
+  cursor:pointer;font-size:13px;line-height:1;
+  transition:background .15s,color .15s;
+}
+.card-fav-btn:hover,.card-fav-btn.is-fav{background:var(--accent);color:#FFF;}
+/* ─── CARTE "VOIR TOUT" EN FIN DE RANGÉE ─────────────────────── */
+.voir-tout-card{
+  flex-shrink:0;width:56px;height:var(--card-img-h);
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.05);
+  border:1px dashed rgba(255,255,255,.14);
+  border-radius:var(--card-r);cursor:pointer;
+  transition:background .15s,border-color .15s;
+}
+.voir-tout-card.foc,.voir-tout-card:hover{
+  background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.45);
+  box-shadow:0 0 0 2px var(--accent);
+}
+.voir-tout-inner{
+  font-size:10px;font-weight:700;color:rgba(255,255,255,.6);
+  writing-mode:vertical-rl;transform:rotate(180deg);
+  letter-spacing:1.2px;text-align:center;pointer-events:none;
+}
+/* ─── MODAL REPRISE ÉPISODE ──────────────────────────────────── */
+#resumeModal{
+  display:none;position:fixed;inset:0;z-index:80;
+  background:rgba(0,0,0,.88);backdrop-filter:blur(18px);
+  align-items:center;justify-content:center;
+}
+#resumeModal.on{display:flex}
+.resume-box{
+  background:rgba(18,22,44,.98);border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;padding:40px 52px;max-width:460px;width:90%;
+  text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.9);
+}
+.resume-title{font-size:19px;font-weight:800;margin-bottom:6px;color:#FFF}
+.resume-sub{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:28px;line-height:1.55}
+.resume-btns{display:flex;gap:12px;justify-content:center}
+.resume-btn{
+  padding:13px 28px;border-radius:24px;border:none;
+  font-size:14px;font-weight:700;cursor:pointer;outline:none;
+  transition:transform .15s,box-shadow .15s;
+}
+.resume-btn-primary{background:var(--accent);color:#FFF}
+.resume-btn-secondary{background:rgba(255,255,255,.10);color:#FFF;border:1.5px solid rgba(255,255,255,.20)}
+.resume-btn.foc{transform:scale(1.08);box-shadow:0 0 0 3px rgba(255,255,255,.85)}
 #grid-wrap{display:flex;flex-wrap:wrap;gap:12px;padding:0 52px 40px;overflow-y:auto;flex:1;scrollbar-width:none}
 #grid-wrap::-webkit-scrollbar{display:none}
 
@@ -668,6 +728,18 @@ html,body{
   </div>
 </div>
 
+<!-- RESUME MODAL -->
+<div id="resumeModal">
+  <div class="resume-box">
+    <div class="resume-title" id="resume-title">Reprendre ?</div>
+    <div class="resume-sub" id="resume-sub">Vous avez déjà regardé cet épisode.</div>
+    <div class="resume-btns">
+      <button class="resume-btn resume-btn-primary" id="resume-continue">▶ Reprendre</button>
+      <button class="resume-btn resume-btn-secondary" id="resume-restart">↺ Recommencer</button>
+    </div>
+  </div>
+</div>
+
 <!-- FORCE UPDATE OVERLAY -->
 <div id="force-update">
   <div class="fu-card">
@@ -786,7 +858,13 @@ const S = {
   gridAllItems: [],   // full unfiltered list
   gridFilter: '',     // active category filter
   gridQuality: '',    // active quality filter
+  gridFavOnly: false, // filtre favoris actif
+  gridSort: 'title',  // 'title' | 'recent' | 'cat'
   filterIdx: 0,       // focused filter pill index
+  // Resume modal
+  _resumeEpIdx: null,
+  _resumeStartMs: 0,
+  _resumeModalBtnIdx: 0, // 0=reprendre 1=recommencer
   // Progress tracking (VLC callback)
   _lastProgKey: null,
   _lastProgItem: null,
@@ -1168,6 +1246,13 @@ async function loadContent() {
     const favItems = getFavs().slice(0, 30).map(f => f.item).filter(Boolean);
     if (favItems.length) rows.push({ title: '♥ Mes favoris', items: favItems });
 
+    // "Nouveautés" — ajouts récents (triés par champ added desc)
+    const newItems = [...S.allItems]
+      .filter(i => i.image && Number(i.added) > 0)
+      .sort((a, b) => Number(b.added) - Number(a.added))
+      .slice(0, 30);
+    if (newItems.length >= 3) rows.push({ title: '🆕 Nouveautés', items: newItems });
+
     // "Recommandé"
     if (pool.length) rows.push({ title: 'Recommandé pour vous', items: shuffle(pool).slice(0, 20) });
 
@@ -1258,8 +1343,32 @@ function renderRows(rows) {
     const h=document.createElement('div'); h.className='row-title'; h.textContent=row.title;
     const wrap=document.createElement('div'); wrap.className='row-items'; wrap.id='ri'+ri;
     row.items.forEach((item,ci)=>wrap.appendChild(mkCard(item,ri,ci,row.isLive)));
+    // "Voir tout" card at end (except for very small rows)
+    if (row.items.length >= 5) {
+      const vt = document.createElement('div');
+      vt.className = 'voir-tout-card';
+      vt.dataset.voirtout = '1';
+      vt.dataset.ri = ri;
+      const inner = document.createElement('div');
+      inner.className = 'voir-tout-inner';
+      inner.textContent = 'Voir tout';
+      vt.appendChild(inner);
+      vt.addEventListener('click', () => _gotoRowAll(row));
+      wrap.appendChild(vt);
+    }
     div.appendChild(h); div.appendChild(wrap); c.appendChild(div);
   });
+}
+
+function _gotoRowAll(row) {
+  // Navigue vers la grille appropriée filtrée par catégorie de la rangée
+  if (row.isLive) { gotoSection('live'); return; }
+  const isSerien = row.items.some(i => i.series_id);
+  const isMixed  = row.items.some(i => i.series_id) && row.items.some(i => !i.series_id);
+  const sec = isMixed ? 'movies' : (isSerien ? 'shows' : 'movies');
+  gotoSection(sec);
+  // Appliquer filtre catégorie si la rangée a une catégorie homogène
+  if (row._cat) { S.gridFilter = row._cat; applyGridFilters(); }
 }
 
 const BLANK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='243'%3E%3Crect fill='%23111' width='180' height='243'/%3E%3Ctext x='90' y='121' fill='%23333' font-size='48' text-anchor='middle' dy='.35em'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E";
@@ -1303,6 +1412,7 @@ function mkCard(item, ri, ci, isLive) {
   info.append(t, ca);
   c.append(imgWrap, info);
 
+  // Type badge (top-left)
   const badge = document.createElement('span');
   badge.className = 'ctype-badge';
   if (lv) {
@@ -1312,7 +1422,31 @@ function mkCard(item, ri, ci, isLive) {
   } else {
     badge.textContent = 'FILM'; badge.classList.add('ctype-film');
   }
-  c.appendChild(badge);
+  imgWrap.appendChild(badge);
+
+  // Quality badge (top-right, VOD/séries only)
+  if (!lv && item.quality) {
+    const qb = document.createElement('span');
+    qb.className = 'card-qual';
+    qb.textContent = item.quality;
+    imgWrap.appendChild(qb);
+  }
+
+  // Fav button (bottom-right of image)
+  if (!lv) {
+    const fb = document.createElement('button');
+    const faved = isFav(item);
+    fb.className = 'card-fav-btn' + (faved ? ' is-fav' : '');
+    fb.textContent = faved ? '♥' : '♡';
+    fb.addEventListener('click', e => {
+      e.stopPropagation();
+      const now = toggleFav(item);
+      fb.classList.toggle('is-fav', now);
+      fb.textContent = now ? '♥' : '♡';
+    });
+    imgWrap.appendChild(fb);
+  }
+
   return c;
 }
 
@@ -1341,38 +1475,75 @@ function renderGrid(items, isLive) {
 function buildFilterBar(items, isLive) {
   const fb = $('filter-bar');
   if (!fb) return;
-  const pills = [{ label: 'Tous', value: '', type: 'all' }];
+  // Reset sort on new grid
+  S.gridSort = 'title';
+  S.gridFavOnly = false;
+
+  const pills = [
+    { label: 'Tous',    value: '', type: 'all' },
+    { label: '♥ Favoris', value: 'favs', type: 'fav' },
+  ];
   if (!isLive) {
-    if (items.some(i => i.quality === '4K')) pills.push({ label: '4K', value: '4K', type: 'q' });
-    if (items.some(i => i.quality === 'HD')) pills.push({ label: 'HD', value: 'HD', type: 'q' });
-    if (items.some(i => i.quality === 'SD')) pills.push({ label: 'SD', value: 'SD', type: 'q' });
+    if (items.some(i => i.quality === '4K')) pills.push({ label: '4K',  value: '4K', type: 'q' });
+    if (items.some(i => i.quality === 'HD')) pills.push({ label: 'HD',  value: 'HD', type: 'q' });
+    if (items.some(i => i.quality === 'SD')) pills.push({ label: 'SD',  value: 'SD', type: 'q' });
   }
   const cats = [...new Set(items.map(i => i.category || '').filter(Boolean))].sort().slice(0, 20);
   cats.forEach(cat => pills.push({ label: cat, value: cat, type: 'cat' }));
-  fb.innerHTML = pills.map((p, i) =>
-    `<div class="fpill${p.type==='all'?' active':''}" data-idx="${i}" data-type="${esc(p.type)}" data-value="${esc(p.value)}">${esc(p.label)}</div>`
-  ).join('');
-  fb.querySelectorAll('.fpill').forEach(pill => {
-    pill.addEventListener('click', () => {
-      const type = pill.dataset.type, val = pill.dataset.value;
-      if (type === 'all')      { S.gridFilter = ''; S.gridQuality = ''; }
-      else if (type === 'q')   { S.gridQuality = S.gridQuality === val ? '' : val; S.gridFilter = ''; }
-      else                     { S.gridFilter  = S.gridFilter  === val ? '' : val; S.gridQuality = ''; }
+  // Séparateur + tri
+  pills.push({ type: 'sep' });
+  pills.push({ label: 'A–Z',    value: 'title',  type: 'sort' });
+  pills.push({ label: '+ Récent', value: 'recent', type: 'sort' });
+
+  fb.innerHTML = '';
+  pills.forEach((p, i) => {
+    if (p.type === 'sep') {
+      const sep = document.createElement('div');
+      sep.className = 'fpill-sep';
+      fb.appendChild(sep);
+      return;
+    }
+    const el = document.createElement('div');
+    el.className = 'fpill';
+    el.dataset.idx  = i;
+    el.dataset.type = p.type;
+    el.dataset.value= p.value;
+    el.textContent  = p.label;
+    // Set initial active state
+    if (p.type === 'all') el.classList.add('active');
+    if (p.type === 'sort' && p.value === S.gridSort) el.classList.add('active');
+    el.addEventListener('click', () => {
+      const type = el.dataset.type, val = el.dataset.value;
+      if      (type === 'all')  { S.gridFilter = ''; S.gridQuality = ''; S.gridFavOnly = false; }
+      else if (type === 'fav')  { S.gridFavOnly = !S.gridFavOnly; S.gridFilter = ''; S.gridQuality = ''; }
+      else if (type === 'q')    { S.gridQuality = S.gridQuality === val ? '' : val; S.gridFilter = ''; S.gridFavOnly = false; }
+      else if (type === 'cat')  { S.gridFilter  = S.gridFilter  === val ? '' : val; S.gridQuality = ''; S.gridFavOnly = false; }
+      else if (type === 'sort') { S.gridSort = val; }
       applyGridFilters();
     });
+    fb.appendChild(el);
   });
 }
 
 function applyGridFilters() {
   const isLive = S.sec === 'live';
   let filtered = S.gridAllItems;
-  if (S.gridFilter)  filtered = filtered.filter(i => i.category === S.gridFilter);
-  if (S.gridQuality) filtered = filtered.filter(i => i.quality  === S.gridQuality);
+  if (S.gridFavOnly)  filtered = filtered.filter(i => isFav(i));
+  if (S.gridFilter)   filtered = filtered.filter(i => i.category === S.gridFilter);
+  if (S.gridQuality)  filtered = filtered.filter(i => i.quality  === S.gridQuality);
+  // Tri
+  if (S.gridSort === 'title')  filtered = [...filtered].sort((a, b) => (a.title||'').localeCompare(b.title||'', 'fr'));
+  if (S.gridSort === 'recent') filtered = [...filtered].sort((a, b) => Number(b.added||0) - Number(a.added||0));
+  if (S.gridSort === 'cat')    filtered = [...filtered].sort((a, b) => (a.category||'').localeCompare(b.category||'','fr'));
+  // Mise à jour des pills
   $('filter-bar')?.querySelectorAll('.fpill').forEach(p => {
     const type = p.dataset.type, val = p.dataset.value;
-    const active = (type==='all' && !S.gridFilter && !S.gridQuality) ||
-                   (type==='q'   && val === S.gridQuality) ||
-                   (type==='cat' && val === S.gridFilter);
+    const active =
+      (type==='all'  && !S.gridFilter && !S.gridQuality && !S.gridFavOnly) ||
+      (type==='fav'  && S.gridFavOnly) ||
+      (type==='q'    && val === S.gridQuality) ||
+      (type==='cat'  && val === S.gridFilter) ||
+      (type==='sort' && val === S.gridSort);
     p.classList.toggle('active', active);
   });
   S.gridItems = filtered;
@@ -1477,6 +1648,16 @@ document.addEventListener('keydown',e=>{
 function nav(dir) {
   if (S._forceUpdateActive) return;
   const z=S.zone;
+
+  if (z==='resume') {
+    if (dir==='l'||dir==='r') {
+      S._resumeModalBtnIdx = S._resumeModalBtnIdx === 0 ? 1 : 0;
+      _focusResumeModal();
+    } else if (dir==='u'||dir==='d') {
+      // no-op in vertical direction
+    }
+    return;
+  }
 
   if (z==='panel') {
     const panel=$('seriesPanel');
@@ -1610,6 +1791,11 @@ function activateItem(item) {
 function select() {
   if (S._forceUpdateActive) { startForceInstall(); return; }
   const z=S.zone;
+  if (z==='resume') {
+    if (S._resumeModalBtnIdx === 0) $('resume-continue')?.click();
+    else $('resume-restart')?.click();
+    return;
+  }
   if (z==='filter') {
     qAll('.fpill')[S.filterIdx]?.click();
     return;
@@ -1631,7 +1817,13 @@ function select() {
     return;
   }
   if (z==='row') {
-    const item=S.rows[S.rowIdx]?.items[S.cardIdx];
+    const row = S.rows[S.rowIdx];
+    const item = row?.items[S.cardIdx];
+    if (!item) {
+      // Carte "Voir tout" (index au-delà des items réels)
+      _gotoRowAll(row);
+      return;
+    }
     activateItem(item);
     return;
   }
@@ -1662,6 +1854,7 @@ function select() {
 // ═══════════════════════════════════════════════════════════════════
 function back() {
   if (S._forceUpdateActive) return;
+  if (S.zone === 'resume') { _closeResumeModal(); return; }
   if (S.panelOpen) { closePanel(); return; }
 
   const z = S.zone;
@@ -1814,8 +2007,11 @@ window.onAndroidPlayerClosed = function(url, posMs, durMs) {
   }
 
   if (pct > 1) {
-    saveProg(key, pct);
-    _cacheP = null; // invalide le cache
+    // Sauvegarder pct + position en secondes (pour le modal Reprendre)
+    const prog = getProg();
+    prog[key] = { pct, t: Math.round(posMs / 1000), d: Math.round(durMs / 1000), ts: Date.now() };
+    storeSet(STORE.progress, prog);
+    _cacheP = prog;
     _refreshCardProgress(key, pct);
   }
 
@@ -2139,6 +2335,59 @@ function playPanelEp(idx) {
   const item = S.panelItem;
   const sk   = S.panelSelSeason || '1';
   const code = `S${String(sk).padStart(2, '0')}E${String(ep.episode_num).padStart(2, '0')}`;
+  const progKey  = `${item.series_id}||${code}`;
+  const savedPct = getProg()[progKey]?.pct || 0;
+  const savedT   = getProg()[progKey]?.t   || 0; // position en secondes
+
+  // Si > 10% et < 92% regardé → modal Reprendre/Recommencer
+  if (savedPct > 10 && savedPct < 92) {
+    _showResumeModal(idx, progKey, savedT);
+    return;
+  }
+
+  _doPlayPanelEp(idx, 0);
+}
+
+function _showResumeModal(epIdx, progKey, savedSec) {
+  S._resumeEpIdx   = epIdx;
+  S._resumeStartMs = savedSec * 1000;
+  S._resumeModalBtnIdx = 0;
+  const min = Math.floor(savedSec / 60);
+  const sec = String(Math.floor(savedSec % 60)).padStart(2, '0');
+  $('resume-sub').textContent = `Reprendre depuis ${min}:${sec} ou recommencer depuis le début ?`;
+  $('resumeModal').classList.add('on');
+  S.zone = 'resume';
+  _focusResumeModal();
+}
+
+function _focusResumeModal() {
+  [$('resume-continue'), $('resume-restart')].forEach((b, i) =>
+    b?.classList.toggle('foc', i === S._resumeModalBtnIdx));
+}
+
+function _closeResumeModal() {
+  $('resumeModal').classList.remove('on');
+  S.zone = 'panel';
+  focusPanel();
+}
+
+$('resume-continue').addEventListener('click', () => {
+  const idx = S._resumeEpIdx;
+  _closeResumeModal();
+  _doPlayPanelEp(idx, S._resumeStartMs);
+});
+$('resume-restart').addEventListener('click', () => {
+  const idx = S._resumeEpIdx;
+  _closeResumeModal();
+  _doPlayPanelEp(idx, 0);
+});
+
+function _doPlayPanelEp(idx, startMs) {
+  const ep   = S.panelEps[idx];
+  if (!ep?.url) return;
+  const item = S.panelItem;
+  const sk   = S.panelSelSeason || '1';
+  const code = `S${String(sk).padStart(2, '0')}E${String(ep.episode_num).padStart(2, '0')}`;
   const httpUrl = ep.url.replace(/^https?:\/\//i, 'http://');
   pushHist(item);
 
@@ -2146,10 +2395,10 @@ function playPanelEp(idx) {
   S._lastProgKey  = `${item.series_id}||${code}`;
   S._lastProgItem = item;
 
-  // Android TV APK : appel direct VLC
+  // Android TV APK : appel direct VLC (startMs = reprise depuis position sauvegardée)
   if (window.AndroidBridge?.openInVlc) {
     const epTitle = `${item.title} — ${code}${ep.title ? ' ' + ep.title : ''}`;
-    try { AndroidBridge.openInVlc(httpUrl, epTitle, false); return; } catch (e) {}
+    try { AndroidBridge.openInVlc(httpUrl, epTitle, false, startMs || 0); return; } catch (e) {}
   }
 
   // Fallback navigateur : player.html
