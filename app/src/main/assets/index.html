@@ -6,620 +6,332 @@
 <title>Google TV Perso</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
 
-/* ─── Calibré pour 1920×1080 — viewport fixé dans le <meta> ────── */
 :root{
-  --bg:#060608;
-  --glass:rgba(255,255,255,.07);
-  --glass-b:rgba(255,255,255,.12);
-  --text:#FFFFFF;
-  --dim:rgba(255,255,255,.5);
-  --accent:#4285F4;
-  --accent-l:#8AB4F8;
-  --glow:rgba(66,133,244,.5);
-  --red:#FF5252;
-  --green:#69F0AE;
-  --ease:.18s ease;
-  --nav-h:72px;
-  --hero-h:220px;
-  --card-w:90px;
-  --card-img-h:130px;
-  --card-r:8px;
-  --safe:48px;
+  --bg:#06060a;--accent:#4285F4;--accent2:#8AB4F8;
+  --text:#fff;--dim:rgba(255,255,255,.55);
+  --cw:100px;--ch:142px;--cr:8px;
+  --nh:60px;--safe:48px;
 }
 
 html,body{
-  width:1920px;height:1080px;
-  background:#060608;color:var(--text);
-  font-family:'Google Sans','Roboto','Noto Sans',system-ui,sans-serif;
-  font-size:16px;overflow:hidden;user-select:none;-webkit-user-select:none
+  width:1920px;height:1080px;background:var(--bg);color:var(--text);
+  font-family:'Google Sans','Roboto',system-ui,sans-serif;
+  font-size:16px;overflow:hidden;user-select:none;-webkit-user-select:none;
 }
 
-/* ─── AURA — Ambient background cinématique ─────────────────────── */
-/*
-  Couche 0 : fond fixe avec dégradés colorés statiques — toujours visibles
-             avant même le chargement des images.
-  Couche 1 : images des affiches floutées qui crossfadent (aura-1 / aura-2)
-  Couche 2 : overlay sombre léger pour préserver la lisibilité du texte
-*/
-#aura-bg{
-  position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
-  /* Atmosphère de base : bleu Google top-gauche, violet profond bottom-droit */
+/* ── Background ── */
+#bg{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
   background:
-    radial-gradient(ellipse 140% 70% at 18% -5%,  rgba(66,133,244,.22)  0%, transparent 52%),
-    radial-gradient(ellipse 90%  80% at 88% 105%,  rgba(110,72,220,.14)  0%, transparent 55%),
-    radial-gradient(ellipse 60%  50% at 55%  50%,  rgba(20, 24, 50,.40)  0%, transparent 68%),
-    #060608;
+    radial-gradient(ellipse 140% 70% at 18% -5%,rgba(66,133,244,.18) 0%,transparent 52%),
+    radial-gradient(ellipse 90% 80% at 88% 105%,rgba(110,72,220,.12) 0%,transparent 55%),
+    #06060a;
+}
+#bg::after{
+  content:'';position:absolute;inset:0;z-index:1;
+  background:linear-gradient(to top,rgba(6,6,10,.95) 0%,rgba(6,6,10,.05) 30%,transparent 55%);
 }
 
-/* Overlay sombre ALLÉGÉ — ne pas écraser la couleur des images */
-#aura-bg::after{
-  content:'';position:absolute;inset:0;z-index:2;
-  background:
-    linear-gradient(to top, rgba(6,6,8,.96) 0%, rgba(6,6,8,.05) 28%, transparent 52%),
-    radial-gradient(ellipse 110% 60% at 50% 0%, rgba(0,0,0,.20) 0%, transparent 65%);
-}
-
-/* Aura désactivée pour fluidité Android TV */
-.aura-layer{display:none}
-#aura-1{opacity:0}
-#aura-2{opacity:0}
-
-/* ─── APP SHELL ──────────────────────────────────────────────────── */
+/* ── App shell ── */
 #app{position:relative;width:1920px;height:1080px;overflow:hidden;z-index:1}
 
-/* ─── TOP NAV — centrage garanti par position absolute ──────────── */
-/* PAS de backdrop-filter = bien plus fluide sur Android WebView     */
+/* ════════════════════ NAV ════════════════════ */
 #topnav{
   position:absolute;top:var(--safe);left:0;right:0;
-  height:var(--nav-h);z-index:20;pointer-events:none;
+  height:var(--nh);z-index:20;pointer-events:none;
 }
-
-/* Logo : cercle en haut-gauche */
 .nav-logo{
   position:absolute;left:var(--safe);top:50%;transform:translateY(-50%);
   display:flex;align-items:center;justify-content:center;
-  width:38px;height:38px;border-radius:50%;
-  background:rgba(10,18,38,.92);
-  border:1px solid rgba(255,255,255,.10);
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(10,18,38,.95);border:1px solid rgba(255,255,255,.12);
   pointer-events:auto;cursor:pointer;
 }
 .nav-logo svg{width:20px;height:20px}
-.nav-logo-text{display:none}
 
-/* Pill centrale — VRAIMENT centrée grâce à left:50% + translateX(-50%) */
+/* PILL CENTRÉ — left:50% + translate(-50%) = toujours au milieu */
 #nav-items{
   position:absolute;left:50%;top:50%;
   transform:translate(-50%,-50%);
   display:flex;align-items:center;gap:2px;
-  background:rgba(10,18,38,.92);
-  border-radius:50px;
-  padding:4px 6px;
-  border:1px solid rgba(255,255,255,.10);
-  pointer-events:auto;
-  white-space:nowrap;
+  background:rgba(10,18,38,.95);
+  border-radius:50px;padding:4px 6px;
+  border:1px solid rgba(255,255,255,.12);
+  pointer-events:auto;white-space:nowrap;
 }
-
 .ni{
   display:inline-flex;align-items:center;gap:5px;
-  padding:7px 16px;border-radius:40px;
-  font-size:13px;font-weight:500;cursor:pointer;outline:none;
-  color:rgba(255,255,255,.62);
-  transition:background .12s,color .12s;
-  white-space:nowrap;flex-shrink:0;
+  padding:7px 18px;border-radius:40px;
+  font-size:13px;font-weight:500;color:rgba(255,255,255,.58);
+  cursor:pointer;white-space:nowrap;transition:background .1s,color .1s;
 }
-.ni.active{background:rgba(255,255,255,.14);color:#FFF;font-weight:600;}
-.ni.foc{background:rgba(255,255,255,.26)!important;color:#FFF!important;font-weight:700;}
-
-/* Settings : cercle en haut-droite */
+.ni.active{background:rgba(255,255,255,.15);color:#fff;font-weight:600}
+.ni.foc{background:rgba(255,255,255,.28)!important;color:#fff!important;font-weight:700}
 #nav-right{
   position:absolute;right:var(--safe);top:50%;transform:translateY(-50%);
-  display:flex;align-items:center;gap:8px;
-  pointer-events:auto;
+  display:flex;align-items:center;gap:8px;pointer-events:auto;
 }
-#clock{display:none;}
 .nav-icon{
-  width:38px;height:38px;border-radius:50%;
+  width:36px;height:36px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  background:rgba(10,18,38,.92);
-  border:1px solid rgba(255,255,255,.10);
-  color:rgba(255,255,255,.78);font-size:17px;
-  cursor:pointer;outline:none;
+  background:rgba(10,18,38,.95);border:1px solid rgba(255,255,255,.12);
+  color:rgba(255,255,255,.75);font-size:16px;cursor:pointer;
 }
-.nav-icon.foc{background:rgba(255,255,255,.90);color:#111;}
+.nav-icon.foc{background:rgba(255,255,255,.9);color:#111}
 
-/* ─── MAIN ───────────────────────────────────────────────────────── */
-#main{position:absolute;inset:0;overflow:hidden;display:flex;flex-direction:column}
+/* ════════════════════ VIEWS ════════════════════ */
+#main{position:absolute;inset:0;overflow:hidden}
+.view{
+  display:flex;flex-direction:column;
+  width:100%;height:100%;
+  padding-top:calc(var(--safe) + var(--nh));
+}
 
-/* ─── VIEWS ──────────────────────────────────────────────────────── */
-#home-view{display:flex;flex-direction:column;height:100%;overflow:hidden;padding-top:calc(var(--safe) + var(--nav-h))}
-#search-view{display:none;flex-direction:column;height:100%;padding-top:calc(var(--safe) + var(--nav-h) + 16px)}
-#settings-view{display:none;flex-direction:column;height:100%;padding:calc(var(--safe) + var(--nav-h) + 24px) var(--safe) 48px}
-
-/* ─── HERO ───────────────────────────────────────────────────────── */
+/* ════════════════════ HERO ════════════════════ */
 #hero{
-  position:relative;width:100%;height:var(--hero-h);
-  overflow:hidden;flex-shrink:0
+  height:195px;flex-shrink:0;position:relative;
+  overflow:hidden;background:#08080f;
 }
-.hbg{
+#hero-bg{
+  position:absolute;inset:-30px;
+  background-size:cover;background-position:center;
+  filter:blur(50px) brightness(.28);
+}
+.hero-grad{
   position:absolute;inset:0;
-  background-size:cover;background-position:center 18%;
-  transition:opacity .6s ease;
-}
-.hbg::after{
-  content:'';position:absolute;inset:0;
   background:
-    linear-gradient(to right,rgba(6,6,8,1) 0%,rgba(6,6,8,.82) 38%,rgba(6,6,8,.15) 68%,rgba(6,6,8,.3) 100%),
-    linear-gradient(to top,rgba(6,6,8,1) 0%,rgba(6,6,8,.4) 40%,transparent 65%)
+    linear-gradient(to right,rgba(6,6,10,.97) 30%,rgba(6,6,10,.4) 65%,transparent 85%),
+    linear-gradient(to top,rgba(6,6,10,.9) 0%,transparent 50%);
 }
-.hposter{
+#hero-poster{
   position:absolute;right:var(--safe);top:50%;transform:translateY(-50%);
-  width:110px;height:165px;border-radius:10px;
-  object-fit:cover;
-  box-shadow:0 16px 48px rgba(0,0,0,.97),0 0 0 1px rgba(255,255,255,.09);
-  display:none;opacity:0;
-  transition:opacity .55s ease;
+  height:175px;width:auto;border-radius:8px;object-fit:cover;
+  box-shadow:0 6px 32px rgba(0,0,0,.8);display:none;
 }
-.hinfo{
-  position:absolute;bottom:20px;left:var(--safe);
-  max-width:52%;z-index:2
+#hero-info{position:absolute;bottom:18px;left:var(--safe);max-width:680px}
+#hero-title{font-size:26px;font-weight:800;line-height:1.1;margin-bottom:4px;text-shadow:0 2px 8px rgba(0,0,0,.8)}
+#hero-meta{font-size:11px;color:var(--dim);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+#hero-acts{display:flex;gap:10px}
+.btn-hero{
+  display:flex;align-items:center;gap:7px;
+  padding:9px 22px;border-radius:999px;
+  font-size:13px;font-weight:600;border:none;cursor:pointer;
 }
-.htag{
-  display:inline-flex;align-items:center;gap:6px;
-  background:rgba(66,133,244,.22);border:1px solid rgba(66,133,244,.38);
-  color:var(--accent-l);border-radius:20px;
-  padding:3px 10px;font-size:10px;font-weight:700;letter-spacing:.6px;
-  margin-bottom:8px;text-transform:uppercase;
-}
-.htitle{
-  font-size:28px;font-weight:800;line-height:1.08;
-  margin-bottom:4px;
-  text-shadow:0 4px 28px rgba(0,0,0,.9);
-  color:#FFF;letter-spacing:-.5px;
-}
-.hmeta{
-  font-size:11px;color:var(--dim);margin-bottom:6px;
-  letter-spacing:.5px;text-transform:uppercase;
-}
-.hplot{display:none}
-.hact{display:flex;gap:12px}
+.btn-play{background:#fff;color:#111}
+.btn-info{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25)}
+.btn-hero.foc{box-shadow:0 0 0 2.5px var(--accent)}
 
-/* ─── BUTTONS ────────────────────────────────────────────────────── */
-.btn{
-  display:inline-flex;align-items:center;gap:7px;
-  padding:10px 24px;border:none;border-radius:24px;
-  font-size:13px;font-weight:700;cursor:pointer;outline:none;
-  transition:transform var(--ease),box-shadow var(--ease),background var(--ease);
-  letter-spacing:.25px;
-}
-.btn-w{background:#FFF;color:#111}
-.btn-g{
-  background:rgba(255,255,255,.11);color:#FFF;
-  border:1.5px solid rgba(255,255,255,.22);
-  
-}
-.btn.foc,.btn:focus{
-  transform:scale(1.07);
-  box-shadow:0 0 0 3px rgba(255,255,255,.9),0 10px 32px rgba(0,0,0,.45);
-}
-
-/* ─── CONTENT (rows on home) ─────────────────────────────────────── */
-#content{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 0 var(--safe);scrollbar-width:none}
+/* ════════════════════ CONTENT ROWS ════════════════════ */
+#content{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-bottom:24px}
 #content::-webkit-scrollbar{display:none}
-
-/* ─── ROW ────────────────────────────────────────────────────────── */
-.row{margin-bottom:10px}
+.row{margin-bottom:8px}
 .row-title{
-  display:flex;align-items:center;gap:10px;
-  font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
-  color:rgba(255,255,255,.52);
-  padding:0 var(--safe);margin-bottom:8px;
+  font-size:11px;font-weight:700;letter-spacing:.8px;
+  color:rgba(255,255,255,.55);text-transform:uppercase;
+  padding:0 var(--safe);margin-bottom:7px;
+  display:flex;align-items:center;gap:7px;
 }
-.row-title::before{
-  content:'';display:inline-block;width:3px;height:12px;
-  background:var(--accent);border-radius:2px;flex-shrink:0;
-}
-.row-items{display:flex;gap:6px;padding:2px var(--safe);overflow-x:auto;scrollbar-width:none}
+.row-title::before{content:'';display:block;width:3px;height:13px;background:var(--accent);border-radius:2px}
+.row-items{display:flex;gap:8px;padding:3px var(--safe);overflow-x:auto;scrollbar-width:none}
 .row-items::-webkit-scrollbar{display:none}
 
-/* ─── CARD ───────────────────────────────────────────────────────── */
+/* ════════════════════ CARDS ════════════════════ */
 .card{
-  flex-shrink:0;width:var(--card-w);border-radius:var(--card-r);overflow:hidden;
-  cursor:pointer;position:relative;
-  transition:transform .1s ease,box-shadow .1s ease;
-  outline:none;
-  background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.07);
+  flex-shrink:0;width:var(--cw);border-radius:var(--cr);
+  overflow:hidden;cursor:pointer;position:relative;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
 }
-.card img{width:100%;height:var(--card-img-h);object-fit:cover;display:block}
-.card.live img{height:58px}
+.card.foc{box-shadow:0 0 0 2px var(--accent);z-index:3;border-color:rgba(66,133,244,.5)}
+.card-wrap{position:relative}
+.card img{width:100%;height:var(--ch);object-fit:cover;display:block}
+.card.live img{height:62px;object-fit:contain;padding:4px;background:#111}
+
+/* Progress bar */
+.cprog{position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(0,0,0,.4)}
+.cprog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+
+/* Type badge */
+.cbadge{
+  position:absolute;top:4px;left:4px;
+  font-size:7px;font-weight:800;padding:2px 5px;border-radius:3px;
+  letter-spacing:.4px;pointer-events:none;background:rgba(0,0,0,.72);
+}
+.cbadge-film{color:#8AB4F8}.cbadge-serie{color:#81C995}.cbadge-live{background:#E53935;color:#fff}
+
+/* Card info */
 .cinfo{padding:5px 7px 7px}
 .ctitle{
   font-size:11px;font-weight:500;color:rgba(255,255,255,.88);
   overflow:hidden;display:-webkit-box;
   -webkit-line-clamp:2;-webkit-box-orient:vertical;
-  line-height:1.32;max-height:30px
+  line-height:1.3;max-height:29px;
 }
-.ccat{font-size:9px;color:rgba(255,255,255,.36);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card.foc{
-  box-shadow:0 0 0 2px var(--accent);
-  z-index:3;
-}
-/* Badge type */
-.ctype-badge{
-  position:absolute;top:4px;left:4px;
-  font-size:7px;font-weight:800;padding:1px 5px;border-radius:4px;
-  letter-spacing:.4px;pointer-events:none;
-  background:rgba(0,0,0,.72);
-}
-.ctype-film{color:#7CB9FF}
-.ctype-serie{color:var(--green)}
-.ctype-live{color:var(--red)}
+.ccat{font-size:9px;color:rgba(255,255,255,.35);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* ─── CARD IMAGE WRAPPER + PROGRESS BAR ─────────────────────────── */
-.card-img-wrap{position:relative;display:block;}
-.card-prog-bar{position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(0,0,0,.35);}
-.card-prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-l));}
-
-/* ─── GRID VIEW ──────────────────────────────────────────────────── */
-#grid-view{display:none;flex-direction:column;height:100%;padding-top:calc(var(--safe) + var(--nav-h) + 8px)}
-#grid-header{display:flex;flex-direction:column;gap:8px;padding:0 var(--safe) 10px;flex-shrink:0;}
-#grid-title{
-  font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
-  color:rgba(255,255,255,.45);display:flex;align-items:center;gap:8px;
-}
-#grid-title::before{content:'';display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px;flex-shrink:0;}
-#filter-bar{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+/* ════════════════════ GRID VIEW ════════════════════ */
+#grid-header{flex-shrink:0;padding:14px var(--safe) 8px}
+#grid-title{font-size:13px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+#filter-bar{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
 #filter-bar::-webkit-scrollbar{display:none}
 .fpill{
-  flex-shrink:0;padding:6px 16px;border-radius:999px;
+  flex-shrink:0;padding:5px 14px;border-radius:999px;
   background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
-  color:rgba(255,255,255,.60);font-size:12px;font-weight:500;cursor:pointer;
-  transition:background .15s,color .15s,border-color .15s,transform .12s;white-space:nowrap;
+  color:rgba(255,255,255,.58);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;
 }
-.fpill.active{background:linear-gradient(135deg,var(--accent),#6A4DDB);color:#FFF;border-color:transparent;font-weight:700;}
-.fpill.foc{box-shadow:0 0 0 2.5px #FFF;transform:scale(1.07);}
-.fpill-sep{flex-shrink:0;width:1px;height:22px;background:rgba(255,255,255,.14);align-self:center;margin:0 3px;}
-/* ─── QUALITÉ BADGE SUR CARTE ────────────────────────────────── */
-.card-qual{
-  position:absolute;top:6px;right:6px;z-index:3;
-  background:rgba(66,133,244,.9);
-  padding:2px 7px;border-radius:6px;
-  font-size:9px;font-weight:800;color:#FFF;letter-spacing:.4px;
-  pointer-events:none;
+.fpill.active{background:linear-gradient(135deg,var(--accent),#5B3FD4);color:#fff;border-color:transparent;font-weight:700}
+.fpill.foc{box-shadow:0 0 0 2px #fff}
+.fpill-sep{flex-shrink:0;width:1px;height:20px;background:rgba(255,255,255,.14);align-self:center;margin:0 2px}
+#grid-wrap{
+  flex:1;overflow-y:auto;scrollbar-width:none;
+  padding:6px var(--safe) 24px;
+  display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;
 }
-/* ─── BOUTON FAVORI SUR CARTE ────────────────────────────────── */
-.card-fav-btn{
-  position:absolute;bottom:6px;right:6px;z-index:3;
-  background:rgba(0,0,0,.55);
-  border:none;color:rgba(255,255,255,.45);
-  padding:4px 7px;border-radius:999px;
-  cursor:pointer;font-size:13px;line-height:1;
-  transition:background .15s,color .15s;
-}
-.card-fav-btn:hover,.card-fav-btn.is-fav{background:var(--accent);color:#FFF;}
-/* ─── CARTE "VOIR TOUT" EN FIN DE RANGÉE ─────────────────────── */
-.voir-tout-card{
-  flex-shrink:0;width:56px;height:var(--card-img-h);
-  display:flex;align-items:center;justify-content:center;
-  background:rgba(255,255,255,.05);
-  border:1px dashed rgba(255,255,255,.14);
-  border-radius:var(--card-r);cursor:pointer;
-  transition:background .15s,border-color .15s;
-}
-.voir-tout-card.foc,.voir-tout-card:hover{
-  background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.45);
-  box-shadow:0 0 0 2px var(--accent);
-}
-.voir-tout-inner{
-  font-size:10px;font-weight:700;color:rgba(255,255,255,.6);
-  writing-mode:vertical-rl;transform:rotate(180deg);
-  letter-spacing:1.2px;text-align:center;pointer-events:none;
-}
-/* ─── MODAL REPRISE ÉPISODE ──────────────────────────────────── */
-#resumeModal{
-  display:none;position:fixed;inset:0;z-index:80;
-  background:rgba(0,0,0,.88);
-  align-items:center;justify-content:center;
-}
-#resumeModal.on{display:flex}
-.resume-box{
-  background:rgba(18,22,44,.98);border:1px solid rgba(255,255,255,.1);
-  border-radius:20px;padding:40px 52px;max-width:460px;width:90%;
-  text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.9);
-}
-.resume-title{font-size:19px;font-weight:800;margin-bottom:6px;color:#FFF}
-.resume-sub{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:28px;line-height:1.55}
-.resume-btns{display:flex;gap:12px;justify-content:center}
-.resume-btn{
-  padding:13px 28px;border-radius:24px;border:none;
-  font-size:14px;font-weight:700;cursor:pointer;outline:none;
-  transition:transform .15s,box-shadow .15s;
-}
-.resume-btn-primary{background:var(--accent);color:#FFF}
-.resume-btn-secondary{background:rgba(255,255,255,.10);color:#FFF;border:1.5px solid rgba(255,255,255,.20)}
-.resume-btn.foc{transform:scale(1.08);box-shadow:0 0 0 3px rgba(255,255,255,.85)}
-#grid-wrap{display:flex;flex-wrap:wrap;gap:10px;padding:0 var(--safe) 40px;overflow-y:auto;flex:1;scrollbar-width:none}
 #grid-wrap::-webkit-scrollbar{display:none}
 
-/* ─── SEARCH ─────────────────────────────────────────────────────── */
-.search-box{
-  display:flex;align-items:center;gap:12px;
-  background:rgba(255,255,255,.08);
-  border:1.5px solid rgba(255,255,255,.14);
-  border-radius:40px;padding:14px 26px;margin:0 52px 24px;max-width:620px;
-  
-  transition:border-color .15s,background .15s;
-}
-.search-box.foc{border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.12)}
+/* ════════════════════ SEARCH VIEW ════════════════════ */
+#search-view{padding-top:calc(var(--safe) + var(--nh) + 16px)}
+#search-bar{padding:0 var(--safe) 16px;flex-shrink:0}
 #sinput{
-  background:none;border:none;outline:none;color:#FFF;
-  font-size:18px;flex:1;font-family:inherit;
+  width:600px;padding:12px 22px;border-radius:999px;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  color:#fff;font-size:15px;outline:none;
 }
-#sinput::placeholder{color:rgba(255,255,255,.3)}
-#sresults{display:flex;flex-wrap:wrap;gap:12px;padding:0 52px;overflow-y:auto;flex:1;scrollbar-width:none}
-#sresults::-webkit-scrollbar{display:none}
+#sinput:focus{border-color:var(--accent)}
+#search-results{
+  flex:1;overflow-y:auto;scrollbar-width:none;
+  padding:0 var(--safe);
+  display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;
+}
 
-/* ─── SETTINGS ───────────────────────────────────────────────────── */
-.settings-title{font-size:26px;font-weight:700;margin-bottom:32px;color:#FFF;letter-spacing:-.3px}
-.setting-row{
-  display:flex;align-items:center;padding:19px 24px;
-  border-radius:14px;cursor:pointer;transition:background .15s;outline:none;
-  border:1px solid transparent;
-  margin-bottom:4px;
+/* ════════════════════ SETTINGS VIEW ════════════════════ */
+#settings-view{padding:calc(var(--safe)+var(--nh)+20px) var(--safe) var(--safe);align-items:flex-start}
+.set-title{font-size:22px;font-weight:800;margin-bottom:24px}
+.set-item{
+  padding:14px 20px;margin-bottom:8px;min-width:440px;
+  border-radius:12px;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.08);
+  font-size:14px;cursor:pointer;
 }
-.setting-row.foc{
-  background:rgba(255,255,255,.09);
-  border-color:rgba(255,255,255,.12);
-}
-.setting-label{flex:1;font-size:16px;font-weight:500}
-.setting-value{font-size:14px;color:var(--dim)}
+.set-item.foc{background:rgba(66,133,244,.2);border-color:var(--accent)}
+.set-desc{font-size:11px;color:var(--dim);margin-top:4px}
 
-/* ─── DETAIL OVERLAY ─────────────────────────────────────────────── */
-#det{
-  display:none;position:fixed;inset:0;
-  background:rgba(0,0,0,.88);z-index:50;
-  align-items:center;justify-content:center;
-  
+/* ════════════════════ PANEL ════════════════════ */
+#panel{
+  position:absolute;inset:0;z-index:50;
+  background:rgba(6,6,10,.97);
+  display:flex;flex-direction:column;
+  padding:calc(var(--safe)+var(--nh)+10px) var(--safe) var(--safe);
+  overflow:hidden;
 }
-#det.on{display:flex}
-.det-card{
-  background:rgba(28,28,36,.97);border:1px solid rgba(255,255,255,.1);
-  border-radius:20px;width:680px;max-height:80vh;
-  overflow-y:auto;padding:36px;
-  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.15) transparent;
-  box-shadow:0 40px 120px rgba(0,0,0,.9);
+.panel-close-btn{
+  position:absolute;top:calc(var(--safe)+8px);right:var(--safe);
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(255,255,255,.1);border:none;color:#fff;
+  font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;
 }
-#det-img{width:100%;height:240px;object-fit:cover;border-radius:12px;margin-bottom:22px}
-#det-title{font-size:26px;font-weight:700;margin-bottom:8px}
-#det-meta{color:var(--dim);font-size:13px;margin-bottom:12px;letter-spacing:.4px;text-transform:uppercase}
-#det-plot{font-size:15px;line-height:1.68;color:rgba(255,255,255,.72);margin-bottom:22px}
-#det-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
-.ephead{font-size:11px;color:var(--dim);padding:10px 0 4px;font-weight:700;text-transform:uppercase;letter-spacing:.8px}
-.ep{
-  padding:13px 16px;border-radius:10px;cursor:pointer;
-  font-size:15px;transition:background .15s;outline:none;
-  border:1px solid transparent;
+.panel-header{display:flex;gap:20px;margin-bottom:16px;flex-shrink:0}
+.panel-poster{width:115px;height:170px;border-radius:10px;object-fit:cover;flex-shrink:0;background:#111}
+.panel-info{flex:1;min-width:0}
+.panel-kicker{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--accent2);text-transform:uppercase;margin-bottom:5px}
+.panel-title{font-size:28px;font-weight:800;line-height:1.1;margin-bottom:5px}
+.panel-meta{font-size:12px;color:var(--dim);margin-bottom:8px}
+.panel-plot{
+  font-size:12px;color:rgba(255,255,255,.65);line-height:1.6;max-width:700px;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+  margin-bottom:14px;
 }
-.ep.foc,.ep:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.1)}
+.panel-acts{display:flex;gap:10px}
+.panel-act-btn{
+  display:flex;align-items:center;gap:7px;
+  padding:9px 24px;border-radius:999px;
+  font-size:13px;font-weight:600;border:none;cursor:pointer;
+}
+.panel-act-play{background:#fff;color:#111}
+.panel-act-fav{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2)}
+.panel-act-btn.foc{box-shadow:0 0 0 2.5px var(--accent)}
+.panel-act-btn.is-fav{background:var(--accent);color:#fff;border-color:transparent}
 
-/* ─── LOADING ────────────────────────────────────────────────────── */
+.panel-tabs{display:flex;gap:6px;margin-bottom:10px;flex-shrink:0;overflow-x:auto;scrollbar-width:none}
+.panel-tab{
+  flex-shrink:0;padding:6px 16px;border-radius:999px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);
+  color:rgba(255,255,255,.6);font-size:12px;cursor:pointer;white-space:nowrap;
+}
+.panel-tab.active{background:var(--accent);color:#fff;border-color:transparent}
+.panel-tab.foc{box-shadow:0 0 0 2px #fff}
+
+#panel-eps{flex:1;overflow-y:auto;scrollbar-width:none}
+#panel-eps::-webkit-scrollbar{display:none}
+.pep{
+  display:flex;align-items:center;gap:14px;
+  padding:10px 12px;border-radius:8px;margin-bottom:4px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+  cursor:pointer;
+}
+.pep.foc{background:rgba(66,133,244,.18);border-color:rgba(66,133,244,.5)}
+.pep.done{opacity:.5}
+.pep-thumb{width:80px;height:46px;border-radius:4px;object-fit:cover;background:#111;flex-shrink:0}
+.pep-code{font-size:10px;font-weight:700;color:var(--accent2);letter-spacing:.5px}
+.pep-title{font-size:12px;font-weight:500;margin-top:2px}
+.pep-pct{font-size:10px;color:var(--dim);margin-top:2px}
+.pep-play{margin-left:auto;font-size:16px;color:var(--dim);flex-shrink:0}
+.pep.foc .pep-play{color:#fff}
+.ep-prog{height:2px;background:rgba(255,255,255,.1);border-radius:1px;margin-top:4px}
+.ep-prog-fill{height:100%;background:var(--accent);border-radius:1px}
+
+/* ════════════════════ RESUME MODAL ════════════════════ */
+#resume-modal{
+  position:absolute;inset:0;z-index:80;background:rgba(0,0,0,.88);
+  display:flex;align-items:center;justify-content:center;
+}
+.resume-box{
+  background:rgba(20,24,42,.98);border:1px solid rgba(255,255,255,.12);
+  border-radius:20px;padding:36px 48px;text-align:center;min-width:420px;
+}
+.resume-title{font-size:20px;font-weight:800;margin-bottom:8px}
+.resume-sub{font-size:13px;color:var(--dim);margin-bottom:24px}
+.resume-btns{display:flex;gap:14px;justify-content:center}
+.resume-btn{
+  padding:11px 28px;border-radius:999px;font-size:14px;font-weight:600;border:none;cursor:pointer;
+}
+.resume-btn-main{background:var(--accent);color:#fff}
+.resume-btn-sec{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2)}
+.resume-btn.foc{box-shadow:0 0 0 3px rgba(255,255,255,.8)}
+
+/* ════════════════════ LOADING ════════════════════ */
 #loading{
-  position:fixed;inset:0;
-  background:
-    radial-gradient(ellipse 140% 70% at 18% -5%, rgba(66,133,244,.18) 0%, transparent 52%),
-    radial-gradient(ellipse 90%  80% at 88% 105%, rgba(110,72,220,.11) 0%, transparent 55%),
-    #060608;
-  display:flex;flex-direction:column;align-items:center;
-  justify-content:center;z-index:100;gap:28px
+  position:absolute;inset:0;z-index:90;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;background:rgba(6,6,10,.9);color:rgba(255,255,255,.6);font-size:14px;
 }
 .spin{
-  width:48px;height:48px;
-  border:3px solid rgba(255,255,255,.1);
+  width:36px;height:36px;
+  border:3px solid rgba(255,255,255,.15);
   border-top-color:var(--accent);border-radius:50%;
-  animation:sp .75s linear infinite
+  animation:spin .7s linear infinite;
 }
-@keyframes sp{to{transform:rotate(360deg)}}
-#loading p{font-size:15px;color:var(--dim);letter-spacing:.3px}
-
-/* ─── HERO BUTTON FOCUS RING ─────────────────────────────────────── */
-#btn-play.foc{box-shadow:0 0 0 3px #FFF,0 0 28px rgba(255,255,255,.3)}
-#btn-info.foc{box-shadow:0 0 0 3px rgba(255,255,255,.75)}
-
-/* ─── FORCE UPDATE OVERLAY ───────────────────────────────────────── */
-#force-update{
-  display:none;position:fixed;inset:0;z-index:999;
-  background:rgba(0,0,0,.96);
-  align-items:center;justify-content:center;
-}
-#force-update.on{display:flex}
-.fu-card{
-  background:rgba(18,22,42,.98);
-  border:1.5px solid rgba(66,133,244,.45);
-  border-radius:24px;
-  padding:56px 68px;max-width:660px;width:90%;text-align:center;
-  box-shadow:0 24px 80px rgba(66,133,244,.2),0 0 0 1px rgba(66,133,244,.1);
-}
-.fu-icon{font-size:64px;margin-bottom:20px;filter:drop-shadow(0 4px 16px rgba(66,133,244,.5))}
-.fu-title{font-size:28px;font-weight:800;margin-bottom:12px}
-.fu-sub{font-size:16px;color:var(--dim);margin-bottom:32px;line-height:1.65}
-.fu-ver{font-size:14px;color:var(--accent-l);margin-bottom:32px;opacity:.85}
-.fu-btn{
-  display:inline-flex;align-items:center;gap:10px;
-  padding:17px 52px;border:none;border-radius:32px;
-  background:var(--accent);color:#FFF;
-  font-size:18px;font-weight:700;cursor:pointer;outline:none;
-  transition:transform .15s,box-shadow .15s;letter-spacing:.2px;
-}
-.fu-btn.foc,.fu-btn:focus{
-  transform:scale(1.07);
-  box-shadow:0 0 0 3px #fff,0 0 36px rgba(66,133,244,.7);
-}
-.fu-btn:disabled{opacity:.45;transform:none;cursor:not-allowed}
-.fu-progress{font-size:14px;color:var(--accent-l);margin-top:20px;min-height:20px;letter-spacing:.2px}
-
-/* ─── SERIES / VOD PANEL ──────────────────────────────────────────── */
-#seriesPanel{
-  display:none;position:fixed;inset:0;z-index:60;
-  background:rgba(4,6,14,.95);
-  
-  -webkit-
-}
-#seriesPanel.on{display:flex}
-.spp-wrap{width:100%;height:100%;display:flex;flex-direction:row}
-.spp-left{
-  width:440px;flex-shrink:0;padding:56px 36px 40px;
-  display:flex;flex-direction:column;gap:16px;
-  border-right:1px solid rgba(255,255,255,.07);
-  overflow:hidden;position:relative;
-}
-.spp-aura{
-  position:absolute;inset:-20%;z-index:0;
-  background-size:cover;background-position:center;
-  filter:blur(80px) brightness(.16) saturate(1.8);
-  pointer-events:none;
-}
-.spp-lc{position:relative;z-index:1;display:flex;flex-direction:column;gap:16px;height:100%}
-.spp-cover{
-  width:156px;height:234px;object-fit:cover;border-radius:12px;flex-shrink:0;
-  box-shadow:0 20px 60px rgba(0,0,0,.9);
-}
-.spp-nocover{
-  width:156px;height:234px;border-radius:12px;flex-shrink:0;
-  background:rgba(255,255,255,.07);
-  display:flex;align-items:center;justify-content:center;font-size:48px;
-}
-.spp-kicker{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-l)}
-.spp-title{font-size:24px;font-weight:800;line-height:1.2;color:#FFF;margin:0}
-.spp-meta{font-size:12px;color:var(--dim);letter-spacing:.5px;text-transform:uppercase}
-.spp-plot{font-size:13px;line-height:1.7;color:rgba(255,255,255,.65);flex:1;
-  display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
-.spp-acts{display:flex;gap:12px;margin-top:auto;flex-wrap:wrap;flex-shrink:0}
-.spp-btn{
-  display:inline-flex;align-items:center;gap:8px;
-  padding:12px 26px;border-radius:24px;border:none;
-  font-size:14px;font-weight:700;cursor:pointer;outline:none;
-  transition:transform .15s,box-shadow .15s;
-}
-.spp-btn-w{background:#FFF;color:#111}
-.spp-btn-g{background:rgba(255,255,255,.1);color:#FFF;border:1.5px solid rgba(255,255,255,.2)}
-.spp-btn.foc{transform:scale(1.07);box-shadow:0 0 0 3px rgba(255,255,255,.8),0 6px 24px rgba(0,0,0,.4)}
-.spp-btn.is-fav .fhrt{color:var(--red)}
-.spp-close{
-  position:absolute;top:16px;right:16px;z-index:2;
-  width:42px;height:42px;border-radius:50%;
-  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
-  color:#FFF;font-size:16px;cursor:pointer;outline:none;
-  display:flex;align-items:center;justify-content:center;
-  transition:background .15s;
-}
-.spp-close.foc,.spp-close:hover{background:rgba(255,255,255,.22)}
-.spp-right{flex:1;display:flex;flex-direction:column;padding:56px 40px 32px;overflow:hidden}
-.spp-rtitle{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:14px;flex-shrink:0}
-.spp-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;flex-shrink:0}
-.spp-tab{
-  padding:7px 18px;border-radius:20px;
-  border:1px solid rgba(255,255,255,.15);
-  background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);
-  font-size:12px;font-weight:600;cursor:pointer;outline:none;
-  transition:background .15s,color .15s;white-space:nowrap;
-}
-.spp-tab.foc,.spp-tab.active{background:var(--accent);color:#FFF;border-color:var(--accent)}
-.spp-tab-cnt{opacity:.7;margin-left:3px;font-weight:400}
-.spp-onesaison{font-size:12px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px;flex-shrink:0}
-.spp-eplist{flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:3px;scrollbar-width:none}
-.spp-eplist::-webkit-scrollbar{display:none}
-.spp-ep{
-  display:flex;align-items:center;gap:14px;
-  padding:10px 14px;border-radius:10px;
-  border:1px solid transparent;cursor:pointer;outline:none;
-  background:none;color:#FFF;text-align:left;width:100%;flex-shrink:0;
-  transition:background .15s,border-color .15s;
-}
-.spp-ep.foc{background:rgba(66,133,244,.18);border-color:rgba(66,133,244,.45)}
-.spp-ep:hover{background:rgba(255,255,255,.06)}
-.spp-ep--done{opacity:.42}
-.spp-ep-img{width:78px;height:45px;border-radius:6px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,.08)}
-.spp-ep-img--blank{display:flex;align-items:center;justify-content:center;font-size:18px}
-.spp-ep-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.spp-ep-code{font-size:11px;font-weight:800;color:var(--accent-l);display:block}
-.spp-ep-title{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
-.spp-ep-dur{font-size:11px;color:var(--dim);display:block}
-.spp-ep-right{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px}
-.spp-check{color:#76D99A;font-size:16px;font-weight:800}
-.spp-pct{font-size:11px;color:var(--dim)}
-.spp-play{font-size:18px;color:rgba(255,255,255,.2);transition:color .15s}
-.spp-ep.foc .spp-play{color:var(--accent)}
-.spp-prog{height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin:2px 0 0}
-.spp-prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-l));border-radius:2px}
-.spp-noep{padding:20px 0;color:var(--dim);font-size:14px;text-align:center}
-.spp-loading{display:flex;align-items:center;gap:10px;color:var(--dim);padding:20px 0}
-.spp-spin{width:20px;height:20px;border:2px solid rgba(255,255,255,.15);border-top-color:var(--accent);border-radius:50%;animation:sp .75s linear infinite}
-
-/* ─── LIVE PICKER ─────────────────────────────────────────────────── */
-.live-picker{
-  position:fixed;inset:0;z-index:70;
-  background:rgba(0,0,0,.86);
-  display:flex;align-items:center;justify-content:center;
-}
-.live-picker__box{
-  background:rgba(18,20,28,.98);border:1px solid rgba(255,255,255,.1);
-  border-radius:20px;padding:48px 56px;max-width:520px;width:90%;
-  text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.9);
-}
-.live-picker__title{font-size:22px;font-weight:800;margin-bottom:6px}
-.live-picker__sub{font-size:14px;color:var(--dim);margin-bottom:28px}
-.live-picker__grid{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:24px}
-.live-picker__btn{
-  padding:14px 32px;border-radius:14px;
-  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
-  color:#FFF;cursor:pointer;outline:none;
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  transition:background .15s,transform .15s;
-}
-.live-picker__btn:focus{background:var(--accent);border-color:var(--accent);transform:scale(1.08);box-shadow:0 0 0 3px rgba(255,255,255,.5)}
-.live-picker__qual{font-size:20px;font-weight:800}
-.live-picker__hint{font-size:11px;color:rgba(255,255,255,.5)}
-.live-picker__close{
-  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
-  color:rgba(255,255,255,.55);padding:10px 24px;border-radius:20px;
-  cursor:pointer;outline:none;font-size:13px;
-}
-.live-picker__close:focus{color:#FFF;border-color:rgba(255,255,255,.4)}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
-<!-- ── AURA AMBIENT BACKGROUND ──────────────────────────────────── -->
-<div id="aura-bg">
-  <div class="aura-layer" id="aura-1"></div>
-  <div class="aura-layer" id="aura-2"></div>
-</div>
-
-<!-- ── LOADING ──────────────────────────────────────────────────── -->
-<div id="loading">
-  <div class="spin"></div>
-  <p>Chargement de Google TV Perso…</p>
-</div>
-
-<!-- ── APP ──────────────────────────────────────────────────────── -->
+<div id="bg"></div>
 <div id="app">
 
-  <!-- TOP NAV Pill Style -->
+  <!-- ── NAV ── -->
   <nav id="topnav">
     <div class="nav-logo">
       <svg viewBox="0 0 28 28" fill="none">
         <rect x="2" y="5" width="24" height="17" rx="3" fill="#4285F4"/>
-        <rect x="10" y="21" width="8" height="3" fill="#4285F4"/>
-        <rect x="7" y="23" width="14" height="2" rx="1" fill="rgba(255,255,255,.35)"/>
         <path d="M8 13l3.5 3L20 10" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <span class="nav-logo-text">Google TV</span>
     </div>
     <div id="nav-items">
       <div class="ni active" data-s="home">Accueil</div>
       <div class="ni" data-s="search">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/></svg>
         Rechercher
       </div>
       <div class="ni" data-s="movies">Films</div>
@@ -627,37 +339,43 @@ html,body{
       <div class="ni" data-s="live">TV Direct</div>
     </div>
     <div id="nav-right">
-      <span id="clock">--:--</span>
-      <div class="nav-icon ni" data-s="settings" title="Paramètres">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <div class="nav-icon ni" data-s="settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </div>
     </div>
   </nav>
 
-  <!-- MAIN CONTENT -->
+  <!-- ── MAIN ── -->
   <div id="main">
 
-    <!-- HOME VIEW -->
-    <div id="home-view">
+    <!-- HOME -->
+    <div id="home-view" class="view">
       <div id="hero">
-        <div class="hbg" id="hbg"></div>
-        <img class="hposter" id="hposter" src="" alt="">
-        <div class="hinfo">
-          <div class="htag" id="htag" style="display:none">★ En vedette</div>
-          <div class="htitle" id="htitle">Chargement…</div>
-          <div class="hmeta" id="hmeta"></div>
-          <div class="hplot" id="hplot"></div>
-          <div class="hact">
-            <button class="btn btn-w" id="btn-play">▶ Lecture</button>
-            <button class="btn btn-g" id="btn-info">ℹ Plus d'infos</button>
+        <div id="hero-bg"></div>
+        <div class="hero-grad"></div>
+        <img id="hero-poster" src="" alt="">
+        <div id="hero-info">
+          <div id="hero-title">Chargement…</div>
+          <div id="hero-meta"></div>
+          <div id="hero-acts">
+            <button class="btn-hero btn-play" id="btn-play">▶ Lecture</button>
+            <button class="btn-hero btn-info" id="btn-info">ℹ Plus d'infos</button>
           </div>
         </div>
       </div>
       <div id="content"></div>
     </div>
 
-    <!-- GRID VIEW (Films / Séries / Live) -->
-    <div id="grid-view">
+    <!-- SEARCH -->
+    <div id="search-view" class="view" hidden>
+      <div id="search-bar">
+        <input id="sinput" type="text" placeholder="Rechercher des films, séries…" autocomplete="off" spellcheck="false">
+      </div>
+      <div id="search-results"></div>
+    </div>
+
+    <!-- GRID (Films / Séries / Live) -->
+    <div id="grid-view" class="view" hidden>
       <div id="grid-header">
         <div id="grid-title"></div>
         <div id="filter-bar"></div>
@@ -665,1908 +383,918 @@ html,body{
       <div id="grid-wrap"></div>
     </div>
 
-    <!-- SEARCH VIEW -->
-    <div id="search-view">
-      <div class="search-box" id="sbox">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0">
-          <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input type="text" id="sinput" placeholder="Rechercher des films, séries…" autocomplete="off">
-      </div>
-      <div id="sresults"></div>
+    <!-- SETTINGS -->
+    <div id="settings-view" class="view" hidden>
+      <div class="set-title">Paramètres</div>
+      <div class="set-item" data-id="cache">🔄 Recharger le cache<div class="set-desc">Vider et recharger l'application</div></div>
+      <div class="set-item" data-id="version">📱 Version APK : <span id="apk-ver">-</span><div class="set-desc">Version courante</div></div>
+      <div class="set-item" data-id="update">⬆ Vérifier mise à jour<div class="set-desc">Rechercher une nouvelle version</div></div>
+      <div class="set-item" data-id="clear-hist">🗑 Effacer l'historique<div class="set-desc">Supprimer tout l'historique de lecture</div></div>
     </div>
 
-    <!-- SETTINGS VIEW -->
-    <div id="settings-view">
-      <div class="settings-title">Paramètres</div>
-      <div class="setting-row" id="set-reload" tabindex="-1">
-        <span class="setting-label">🔄  Recharger le contenu</span>
-        <span class="setting-value">Actualiser les catalogues</span>
+  </div>
+
+  <!-- PANEL (série / film) -->
+  <div id="panel" hidden>
+    <button class="panel-close-btn" id="panel-close">✕</button>
+    <div class="panel-header">
+      <img class="panel-poster" id="panel-poster" src="" alt="">
+      <div class="panel-info">
+        <div class="panel-kicker" id="panel-kicker">Film</div>
+        <div class="panel-title" id="panel-title"></div>
+        <div class="panel-meta"  id="panel-meta"></div>
+        <div class="panel-plot"  id="panel-plot"></div>
+        <div class="panel-acts">
+          <button class="panel-act-btn panel-act-play" id="panel-btn-play">▶ Lecture</button>
+          <button class="panel-act-btn panel-act-fav"  id="panel-btn-fav">♡ Favoris</button>
+        </div>
       </div>
-      <div class="setting-row" id="set-cache" tabindex="-1">
-        <span class="setting-label">🗑  Vider le cache</span>
-        <span class="setting-value">Libérer de la mémoire</span>
-      </div>
-      <div class="setting-row" id="set-update" tabindex="-1">
-        <span class="setting-label">⬆  Mise à jour automatique</span>
-        <span class="setting-value" id="update-val">Appuyer pour vérifier</span>
-      </div>
-      <div class="setting-row" id="set-about" tabindex="-1">
-        <span class="setting-label">ℹ  À propos</span>
-        <span class="setting-value" id="about-val">Google TV Perso</span>
+    </div>
+    <div class="panel-tabs" id="panel-tabs"></div>
+    <div id="panel-eps"></div>
+  </div>
+
+  <!-- RESUME MODAL -->
+  <div id="resume-modal" hidden>
+    <div class="resume-box">
+      <div class="resume-title">Reprendre la lecture ?</div>
+      <div class="resume-sub" id="resume-sub"></div>
+      <div class="resume-btns">
+        <button class="resume-btn resume-btn-main" id="btn-resume">▶ Reprendre</button>
+        <button class="resume-btn resume-btn-sec"  id="btn-restart">↺ Recommencer</button>
       </div>
     </div>
   </div>
-</div>
 
-<!-- RESUME MODAL -->
-<div id="resumeModal">
-  <div class="resume-box">
-    <div class="resume-title" id="resume-title">Reprendre ?</div>
-    <div class="resume-sub" id="resume-sub">Vous avez déjà regardé cet épisode.</div>
-    <div class="resume-btns">
-      <button class="resume-btn resume-btn-primary" id="resume-continue">▶ Reprendre</button>
-      <button class="resume-btn resume-btn-secondary" id="resume-restart">↺ Recommencer</button>
-    </div>
+  <!-- LOADING -->
+  <div id="loading">
+    <div class="spin"></div>
+    <div>Chargement…</div>
   </div>
-</div>
 
-<!-- FORCE UPDATE OVERLAY -->
-<div id="force-update">
-  <div class="fu-card">
-    <div class="fu-icon">⬆</div>
-    <div class="fu-title" id="fu-title">Mise à jour disponible</div>
-    <div class="fu-sub">Une nouvelle version est disponible.<br>La mise à jour est obligatoire pour continuer.</div>
-    <div class="fu-ver" id="fu-ver"></div>
-    <button class="fu-btn" id="fu-btn" type="button" onclick="startForceInstall()">⬇ Installer maintenant</button>
-    <div class="fu-progress" id="fu-progress"></div>
-  </div>
-</div>
-
-<!-- SERIES / VOD PANEL -->
-<div id="seriesPanel"></div>
-
-<!-- DETAIL OVERLAY -->
-<div id="det">
-  <div class="det-card">
-    <img id="det-img" src="" alt="">
-    <div id="det-title"></div>
-    <div id="det-meta"></div>
-    <div id="det-plot"></div>
-    <div id="det-actions"></div>
-    <div id="det-eps"></div>
-  </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════════
-//  CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════
-const GH   = 'https://morpheus45.github.io/VOD/';
-const API  = 'http://goldenlink.live/player_api.php';
-const U    = 'E5G5E39';
-const P    = 'RE88M4E';
+'use strict';
+// ══════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════
+const GH  = 'https://morpheus45.github.io/VOD/';
+const API = 'http://goldenlink.live/player_api.php';
+const U   = 'E5G5E39';
+const P   = 'RE88M4E';
+const NAV_KEYS = ['home','search','movies','shows','live','settings'];
+const ADULT_RE  = /adult|xxx|porn|x{2,}|hentai|erotic/i;
+const LATEST_RE = /latest|nouveau/i;
+const BLANK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='142'%3E%3Crect fill='%23111' width='100' height='142'/%3E%3Ctext x='50' y='71' fill='%23333' font-size='32' text-anchor='middle' dy='.35em'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E";
+const STORE = { prog:'pf_progress_v4', hist:'pf_history_v4', favs:'pf_favorites_v4' };
 
-// ═══════════════════════════════════════════════════════════════════
-//  TITLE / QUALITY HELPERS  (portés depuis VOD/app.js)
-// ═══════════════════════════════════════════════════════════════════
-function cleanTitle(t) {
-  if (!t) return '';
-  let s = String(t);
-  s = s.replace(/^(FR|SRS|EN|VOD|SERIE)\s*[-|:]\s*/i, '');
-  s = s.replace(/\s*(?:group-title|tvg-\w+)\s*=\s*"[^"]*"/gi, '');
-  s = s.replace(/\.(mkv|mp4|ts|m3u8|avi|mov)$/i, '');
-  s = s.replace(/\s*\(\d{4}\)\s*$/, '');
-  return s.replace(/\s+/g, ' ').trim();
-}
-
-function cleanEpTitle(raw, seriesTitle) {
-  if (!raw) return '';
-  let s = String(raw);
-  const re = new RegExp('^' + seriesTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[-–]\\s*S\\d+E\\d+\\s*[-–]\\s*', 'i');
-  s = s.replace(re, '');
-  s = s.replace(/^S\d+E\d+\s*[-–]\s*/i, '');
-  return cleanTitle(s) || '';
-}
-
-function inferQuality(src) {
-  const t = String(src || '').toLowerCase();
-  if (/\b(4k|uhd|2160p?)\b/.test(t)) return '4K';
-  if (/\b(fhd|full[\s-]?hd|1080p?|hd|720p?)\b/.test(t)) return 'HD';
-  if (/\b(sd|480p?|360p?)\b/.test(t)) return 'SD';
-  return '';
-}
-
-function secureUrl(url) {
-  if (!url) return url;
-  if (location.protocol === 'https:' && /^http:\/\//i.test(url))
-    return url.replace(/^http:\/\//i, 'https://');
-  return url;
-}
-
-// ═══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
 //  STATE
-// ═══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
 const S = {
-  sec: 'home',
-  zone: 'hero',
-  prevZone: 'hero',
-  navIdx: 0,
-  hBtn: 0,
-  rowIdx: 0,
-  cardIdx: 0,
-  gridIdx: 0,
-  gridItems: [],
-  detEpIdx: 0,
-  setIdx: 0,
-  rows: [],
-  heroItem: null,
-  allItems: [],    // tous (vod + séries)
-  allVod: [],      // films seulement
-  allSeries: [],   // séries seulement
-  liveItems: [],
-  detItem: null,
-  detEps: [],
-  heroTimer: null,
-  heroPool: [],
-  _updateUrl: null,
-  _forceUpdateCheck: false,
-  _forceUpdateActive: false,
-  // Panel (series / VOD)
-  panelOpen: false,
-  panelItem: null,
-  panelIsVod: false,
-  panelDirectOnly: false,
-  panelZone: 'acts',  // 'acts' | 'tabs' | 'eps'
-  panelActIdx: 0,     // 0=play, 1=fav
-  panelTabIdx: 0,
-  panelEpIdx: 0,
-  panelSmap: {},      // { "1": [ep,...] }
-  panelSmeta: [],     // [{ num, name, cover, count }]
-  panelSelSeason: null,
-  panelEps: [],       // flat list of current season eps
-  // Grid filters
-  gridAllItems: [],   // full unfiltered list
-  gridFilter: '',     // active category filter
-  gridQuality: '',    // active quality filter
-  gridFavOnly: false, // filtre favoris actif
-  gridSort: 'title',  // 'title' | 'recent' | 'cat'
-  filterIdx: 0,       // focused filter pill index
-  // Resume modal
-  _resumeEpIdx: null,
-  _resumeStartMs: 0,
-  _resumeModalBtnIdx: 0, // 0=reprendre 1=recommencer
-  // Progress tracking (VLC callback)
-  _lastProgKey: null,
-  _lastProgItem: null,
+  sec:'home', zone:'hero',
+  navIdx:0,
+  hBtn:0, heroItem:null, heroPool:[], heroTimer:null,
+  rows:[], rowIdx:0, cardIdx:0,
+  gridItems:[], gridAll:[],
+  gridFilter:'', gridQuality:'', gridFavOnly:false, gridSort:'title',
+  gridIdx:0, filterIdx:0, filterPills:[],
+  allItems:[], allVod:[], allSeries:[], liveItems:[],
+  panelItem:null, panelIsVod:false,
+  panelSmap:{}, panelSmeta:[], panelSelSeason:null,
+  panelEps:[], panelActIdx:0, panelTabIdx:0, panelEpIdx:0,
+  epCache:{},
+  resumeEpIdx:null, resumeStartMs:0, resumeBtn:0,
+  lastProgKey:null, lastProgItem:null,
+  searchIdx:0, setIdx:0,
 };
 
-const NAV_ITEMS = ['home','search','movies','shows','live','settings'];
-const NAV_LABELS = {home:'Accueil',search:'Rechercher',movies:'Films',shows:'Séries',live:'TV en Direct',settings:'Paramètres'};
-const SET_ROWS = ['set-reload','set-cache','set-update','set-about'];
-
-// ═══════════════════════════════════════════════════════════════════
-//  DOM helpers
-// ═══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
-const qAll = sel => document.querySelectorAll(sel);
+const qAll = s => [...document.querySelectorAll(s)];
 
-// ═══════════════════════════════════════════════════════════════════
-//  CLOCK
-// ═══════════════════════════════════════════════════════════════════
-function tick() {
-  const d = new Date();
-  $('clock').textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-}
-tick(); setInterval(tick, 1000);
-
-// ═══════════════════════════════════════════════════════════════════
-//  FETCH HELPERS
-// ═══════════════════════════════════════════════════════════════════
-function bridgeFetch(url) {
-  return new Promise(resolve => {
-    try {
-      if (window.AndroidBridge?.fetchJson) {
-        const r = AndroidBridge.fetchJson(url);
-        resolve(r ? JSON.parse(r) : null);
-      } else {
-        fetch(url.replace(/^http:\/\//,'https://'))
-          .then(r=>r.json()).then(resolve).catch(()=>resolve(null));
-      }
-    } catch(e) { resolve(null); }
-  });
-}
-
-async function loadJSON(url) {
-  try { const r = await fetch(url); return r.ok ? await r.json() : null; }
-  catch(e){ return null; }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  PROGRESS / HISTORY
-// ═══════════════════════════════════════════════════════════════════
-const STORE = { progress:'pf_progress_v4', history:'pf_history_v4', favs:'pf_favorites_v4' };
 function storeGet(k,fb){ try{ const r=localStorage.getItem(k); return r?JSON.parse(r):fb; }catch{ return fb; } }
 function storeSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} }
 
-// ═══════════════════════════════════════════════════════════════════
-//  FAVORITES / HISTORY / PROGRESS
-// ═══════════════════════════════════════════════════════════════════
-function getFavs() { return storeGet(STORE.favs, []); }
-
-// Clé stable compatible ancien et nouveau schéma
-function favKey(item) {
-  if (item.series_id) return 's_' + item.series_id;
-  if (item.stream_id) return 'v_' + item.stream_id;
-  return 'u_' + (item.url || item.title || '');
+let _cacheP=null;
+function getProg(){ if(!_cacheP) _cacheP=storeGet(STORE.prog,{}); return _cacheP; }
+function saveProg(k,data){ const p=getProg(); p[k]=data; storeSet(STORE.prog,p); _cacheP=p; }
+function getFavs(){ return storeGet(STORE.favs,[]); }
+function getHist(){ return storeGet(STORE.hist,[]); }
+function itemKey(i){ return i.series_id?'s_'+i.series_id:i.stream_id?'v_'+i.stream_id:'t_'+i.title; }
+function isFav(i){ const k=itemKey(i); return getFavs().some(x=>x.k===k); }
+function toggleFav(i){
+  const f=getFavs(),k=itemKey(i),ix=f.findIndex(x=>x.k===k);
+  if(ix>=0) f.splice(ix,1); else f.unshift({k,item:i,at:Date.now()});
+  storeSet(STORE.favs,f.slice(0,500));
+  return isFav(i);
 }
-
-function isFav(item) { return getFavs().some(x => x.key === favKey(item)); }
-
-function toggleFav(item) {
-  const favs = getFavs();
-  const key  = favKey(item);
-  const idx  = favs.findIndex(x => x.key === key);
-  if (idx >= 0) favs.splice(idx, 1);
-  else favs.unshift({ key, item, at: Date.now() });
-  storeSet(STORE.favs, favs.slice(0, 500));
-  return favs.some(x => x.key === key);
+function pushHist(i){
+  if(!i||i.isLive) return;
+  const h=getHist().filter(x=>x.k!==itemKey(i));
+  h.unshift({k:itemKey(i),item:i,at:Date.now()});
+  storeSet(STORE.hist,h.slice(0,200));
 }
+function shuffle(a){ const b=[...a]; for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; }
+function isClean(i){ return !ADULT_RE.test(i.category||'')&&!ADULT_RE.test(i.title||''); }
+function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtTime(sec){ const m=Math.floor(sec/60),s=Math.round(sec%60); return m+':'+(s<10?'0':'')+s; }
 
-let _cacheP = null;
-function getProg() {
-  if (!_cacheP) _cacheP = storeGet(STORE.progress, {});
-  return _cacheP;
+// ══════════════════════════════════════════════════
+//  TITLE / QUALITY
+// ══════════════════════════════════════════════════
+function cleanTitle(t){
+  if(!t) return '';
+  let s=String(t);
+  s=s.replace(/^(FR|SRS|EN|VOD|SERIE)\s*[-|:]\s*/i,'');
+  s=s.replace(/\s*(?:group-title|tvg-\w+)\s*=\s*"[^"]*"/gi,'');
+  s=s.replace(/\.(mkv|mp4|ts|m3u8|avi|mov)$/i,'');
+  s=s.replace(/\s*\(\d{4}\)\s*$/,'');
+  return s.replace(/\s+/g,' ').trim();
 }
-function saveProg(key, pct) {
-  const p = getProg(); p[key] = { pct, ts: Date.now() };
-  storeSet(STORE.progress, p);
-  _cacheP = p;
+function cleanEpTitle(raw,st){
+  if(!raw) return '';
+  let s=String(raw);
+  s=s.replace(new RegExp('^'+st.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*[-–]\\s*S\\d+E\\d+\\s*[-–]\\s*','i'),'');
+  s=s.replace(/^S\d+E\d+\s*[-–]\s*/i,'');
+  return cleanTitle(s)||'';
 }
-
-function getHist() { return storeGet(STORE.history, []); }
-
-function histKey(item) {
-  if (item.series_id) return 'series_' + item.series_id;
-  if (item.stream_id) return 'vid_' + item.stream_id;
-  return item.url || item.title || '';
-}
-
-function pushHist(item) {
-  const key = histKey(item);
-  const h   = getHist().filter(x => x.key !== key);
-  h.unshift({ key, item, at: Date.now() });
-  storeSet(STORE.history, h.slice(0, 100));
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  EPISODES MAP + CHUNKS  (portés depuis VOD/app.js)
-// ═══════════════════════════════════════════════════════════════════
-let _epMap = null, _epMapPromise = null;
-const _loadedChunks = {};
-const epDb = {};
-// Cache des épisodes déjà chargés (clé = cacheKey série)
-const _epCache = {};
-
-async function getEpMap() {
-  if (_epMap) return _epMap;
-  if (_epMapPromise) return _epMapPromise;
-  _epMapPromise = loadJSON(GH + 'episodes_map.json').then(m => {
-    _epMap = m || {};
-    return _epMap;
-  });
-  return _epMapPromise;
-}
-
-async function ensureEpDb(seriesId) {
-  const map = await getEpMap();
-  const chunkNum = seriesId ? map[String(seriesId)] : null;
-  if (!chunkNum) return false;
-  if (!_loadedChunks[chunkNum]) {
-    _loadedChunks[chunkNum] = loadJSON(GH + `episodes_part${chunkNum}.json`).then(chunk => {
-      if (chunk && typeof chunk === 'object') Object.assign(epDb, chunk);
-    });
-  }
-  await _loadedChunks[chunkNum];
-  return true;
-}
-
-// ─── Xtream URL helpers ───────────────────────────────────────────
-function parseXtreamCreds(apiUrl) {
-  try {
-    const p = new URL(apiUrl);
-    return { base: p.origin, username: p.searchParams.get('username') || '', password: p.searchParams.get('password') || '' };
-  } catch { return null; }
-}
-
-function buildEpUrl(seriesIdOrApiUrl, ep) {
-  // appelé depuis openPanel (TV) avec seriesId simple → reconstruit l'URL goldenlink
-  if (ep.url && !ep.url.includes('player_api') && !ep.url.includes('get_series_info'))
-    return ep.url;
-  const ext = ep.container_extension || ep.ext || 'mkv';
-  if (ep.id && !String(ep.id).includes('-'))
-    return `http://goldenlink.live/series/${U}/${P}/${ep.id}.${ext}`;
+function inferQuality(src){
+  const t=String(src||'').toLowerCase();
+  if(/\b(4k|uhd|2160p?)\b/.test(t)) return '4K';
+  if(/\b(fhd|full[\s-]?hd|1080p?|hd|720p?)\b/.test(t)) return 'HD';
+  if(/\b(sd|480p?|360p?)\b/.test(t)) return 'SD';
   return '';
 }
 
-// Charge les épisodes d'une série (epDb chunks → fallback API)
-async function loadEpisodes(item) {
-  const sid = String(item.series_id || item.id || '');
-  const cacheKey = `s_${sid}_${item.title}`;
-  if (_epCache[cacheKey]) return _epCache[cacheKey];
-
-  // 1. Base pré-générée
-  await ensureEpDb(sid);
-  if (sid && epDb[sid]) {
-    const db = epDb[sid];
-    const seasonsMap = {};
-    Object.entries(db.seasons || {}).forEach(([sk, epList]) => {
-      seasonsMap[String(sk)] = epList.map(ep => ({
-        id                 : ep.id,
-        episode_num        : ep.episode_num,
-        season             : ep.season,
-        title              : cleanEpTitle(ep.title || '', item.title) || `Épisode ${ep.episode_num}`,
-        url                : ep.url,
-        stream_url         : ep.url,
-        container_extension: ep.ext || 'mkv',
-        duration           : ep.duration || '',
-        plot               : ep.plot || '',
-        thumb              : ep.thumb || ''
-      }));
-    });
-    const seasonsMeta = (db.seasonsMeta || []).map(s => ({
-      num: s.num, name: s.name || `Saison ${s.num}`, cover: s.cover || '', count: s.count || 0
-    }));
-    if (db.meta) {
-      if (!item.plot  && db.meta.plot)  item.plot  = db.meta.plot;
-      if (!item.image && db.meta.cover) item.image = db.meta.cover;
-    }
-    const result = { seasonsMap, seasonsMeta };
-    _epCache[cacheKey] = result;
-    return result;
+// ══════════════════════════════════════════════════
+//  NETWORK
+// ══════════════════════════════════════════════════
+async function bridgeFetch(url){
+  if(window.AndroidBridge?.fetchJson){
+    try{ const r=AndroidBridge.fetchJson(url); if(r) return JSON.parse(r); }catch{}
   }
-
-  // 2. Fallback API Xtream
-  const apiUrl = `http://goldenlink.live/player_api.php?username=${U}&password=${P}&action=get_series_info&series_id=${sid}`;
-  let data = null;
-  if (typeof window.AndroidBridge?.fetchJson === 'function') {
-    try { const raw = window.AndroidBridge.fetchJson(apiUrl); if (raw) data = JSON.parse(raw); } catch {}
-  }
-  if (!data) {
-    try {
-      const ctrl = new AbortController();
-      const tid  = setTimeout(() => ctrl.abort(), 12000);
-      const r = await fetch(apiUrl, { signal: ctrl.signal });
-      clearTimeout(tid);
-      data = r.ok ? await r.json() : null;
-    } catch { data = null; }
-  }
-  if (!data) return { seasonsMap: {}, seasonsMeta: [], directOnly: true };
-
-  const seasonsMap = {};
-  const rawEps = data.episodes;
-  if (rawEps && typeof rawEps === 'object') {
-    Object.entries(rawEps).forEach(([sk, epList]) => {
-      if (!Array.isArray(epList)) return;
-      seasonsMap[String(sk)] = epList
-        .filter(ep => ep && (ep.id || ep.episode_num))
-        .map(ep => {
-          const url = buildEpUrl(sid, ep);
-          return {
-            id: ep.id, episode_num: Number(ep.episode_num) || 1,
-            season: Number(ep.season || sk),
-            title: cleanEpTitle(ep.title || ep.name || '', item.title) || `Épisode ${ep.episode_num}`,
-            url, stream_url: url,
-            container_extension: ep.container_extension || 'mkv',
-            duration: ep.info?.duration || '', plot: ep.info?.plot || '', thumb: ep.info?.movie_image || ''
-          };
-        })
-        .sort((a, b) => a.episode_num - b.episode_num);
-    });
-  }
-  let seasonsMeta = [];
-  if (Array.isArray(data.seasons)) {
-    seasonsMeta = data.seasons.filter(s => s.season_number > 0)
-      .sort((a, b) => a.season_number - b.season_number)
-      .map(s => ({ num: s.season_number, name: s.name || `Saison ${s.season_number}`, cover: s.cover_big || s.cover || '', count: s.episode_count || 0 }));
-  }
-  if (data.info) {
-    if (!item.plot)  item.plot  = data.info.plot || data.info.description || '';
-    if (!item.image) item.image = data.info.cover || data.info.movie_image || '';
-  }
-  const result = { seasonsMap, seasonsMeta };
-  _epCache[cacheKey] = result;
-  return result;
+  try{ const r=await fetch(url); return r.ok?r.json():null; }catch{ return null; }
+}
+async function loadJSON(url){
+  try{ const r=await fetch(url); return r.ok?r.json():null; }catch{ return null; }
 }
 
-// ─── Fetch synopsis VOD depuis API Xtream ─────────────────────────
-async function fetchVodPlot(item) {
-  const vodId = item.stream_id || item.id || '';
-  if (!vodId) return null;
-  const apiUrl = `http://goldenlink.live/player_api.php?username=${U}&password=${P}&action=get_vod_info&vod_id=${vodId}`;
-  let json = null;
-  if (typeof window.AndroidBridge?.fetchJson === 'function') {
-    try { const raw = window.AndroidBridge.fetchJson(apiUrl); if (raw) json = JSON.parse(raw); } catch {}
-  }
-  if (!json) {
-    try {
-      const ctrl = new AbortController();
-      const tid  = setTimeout(() => ctrl.abort(), 8000);
-      const r = await fetch(apiUrl, { signal: ctrl.signal });
-      clearTimeout(tid);
-      if (r.ok) json = await r.json();
-    } catch {}
-  }
-  return json?.info?.plot || json?.info?.description || null;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  CONTENT LOADING  (logique VOD/app.js)
-// ═══════════════════════════════════════════════════════════════════
-function extractArr(json) {
-  if (!json) return [];
-  if (Array.isArray(json)) return json;
-  for (const k of ['items','streams','channels','movies','series','vod']) {
-    if (Array.isArray(json[k])) return json[k];
-  }
+// ══════════════════════════════════════════════════
+//  NORMALISATION
+// ══════════════════════════════════════════════════
+function extractArr(j){
+  if(!j) return [];
+  if(Array.isArray(j)) return j;
+  for(const k of ['items','streams','channels','movies','series','vod']){ if(Array.isArray(j[k])) return j[k]; }
   return [];
 }
-
-function normalise(raw) {
-  if (!raw) return null;
-  const rawTitle = raw.title || raw.name || '';
-  if (!rawTitle) return null;
-  if (/\bvostfr\b/i.test(rawTitle)) return null;
-  const url      = raw.stream_url || raw.url || '';
-  const sid      = raw.series_id  || null;
-  const vid      = raw.stream_id  || null;
-  const category = raw.category_name || raw.category || 'Autre';
+function normalise(raw){
+  if(!raw) return null;
+  const title=raw.title||raw.name||''; if(!title||/\bvostfr\b/i.test(title)) return null;
   return {
-    title     : cleanTitle(rawTitle),
-    image     : raw.stream_icon || raw.image || raw.cover || raw.poster || '',
-    category  : cleanTitle(category),
-    plot      : raw.plot || raw.description || raw.overview || '',
-    url,
-    series_id : sid,
-    stream_id : vid,
-    quality   : inferQuality([rawTitle, category].join(' ')),
-    added     : raw.added || 0,
-    isLive    : false,
+    title    :cleanTitle(title),
+    image    :raw.stream_icon||raw.image||raw.cover||raw.poster||'',
+    category :cleanTitle(raw.category_name||raw.category||'Autre'),
+    plot     :raw.plot||raw.description||raw.overview||'',
+    url      :raw.stream_url||raw.url||'',
+    series_id:raw.series_id||null,
+    stream_id:raw.stream_id||null,
+    quality  :inferQuality([title,raw.category_name||''].join(' ')),
+    added    :raw.added||0,
+    isLive   :false,
   };
 }
 
-function shuffle(a) {
-  const b = [...a];
-  for (let i = b.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [b[i], b[j]] = [b[j], b[i]];
-  }
-  return b;
-}
-
-async function loadContent() {
-  try {
-    const [vodJson, seriesJson, liveJson] = await Promise.all([
-      loadJSON(GH + 'vod.json'),
-      loadJSON(GH + 'series.json'),
-      loadJSON(GH + 'live.json'),
+// ══════════════════════════════════════════════════
+//  CONTENT LOADING
+// ══════════════════════════════════════════════════
+async function loadContent(){
+  $('loading').hidden=false;
+  try{
+    const [vodJson,seriesJson,liveJson]=await Promise.all([
+      loadJSON(GH+'vod.json'),
+      loadJSON(GH+'series.json'),
+      loadJSON(GH+'live.json'),
     ]);
 
-    // ── VOD & Séries ────────────────────────────────────────────
-    const allVod    = [];
-    const allSeries = [];
-    const byCat     = {};
-    const seen      = new Set();
-
-    function addItem(raw, isSeries) {
-      const item = normalise(raw);
-      if (!item) return;
-      const key = item.title + '|' + (item.series_id || item.stream_id || '');
-      if (seen.has(key)) return;
-      seen.add(key);
-      if (isSeries) { item.series_id = item.series_id || raw.series_id || raw.id || null; allSeries.push(item); }
+    const seen=new Set(), byCat={}, allVod=[], allSeries=[];
+    function addItem(raw,isSerie){
+      const item=normalise(raw); if(!item) return;
+      const key=item.title+'|'+(item.series_id||item.stream_id||'');
+      if(seen.has(key)) return; seen.add(key);
+      if(isSerie){ item.series_id=item.series_id||raw.series_id||raw.id||null; allSeries.push(item); }
       else allVod.push(item);
-      const cat = item.category || 'Autres';
-      (byCat[cat] = byCat[cat] || []).push(item);
+      const cat=item.category||'Autre';
+      (byCat[cat]=byCat[cat]||[]).push(item);
     }
+    extractArr(vodJson).forEach(r=>addItem(r,false));
+    extractArr(seriesJson).forEach(r=>addItem(r,true));
+    S.allVod=allVod; S.allSeries=allSeries; S.allItems=[...allVod,...allSeries];
 
-    extractArr(vodJson).forEach(r => addItem(r, false));
-    extractArr(seriesJson).forEach(r => addItem(r, true));
+    // Live
+    const liveArr=extractArr(liveJson);
+    S.liveItems=liveArr.length
+      ?liveArr.map((ch,i)=>({
+          title    :cleanTitle(ch.title||ch.name||'Sans titre'),
+          image    :ch.stream_icon||ch.image||'',
+          category :cleanTitle(ch.category_name||ch.category||'Live TV'),
+          plot     :ch.plot||'',
+          url      :ch.stream_url||ch.url||`http://goldenlink.live/live/${U}/${P}/${ch.stream_id||i}.ts`,
+          stream_id:ch.stream_id||String(i),
+          isLive   :true,
+        }))
+      :[];
 
-    S.allItems   = [...allVod, ...allSeries];
-    S.allVod     = allVod;
-    S.allSeries  = allSeries;
+    S.heroPool=S.allItems.filter(i=>i.image&&isClean(i));
 
-    // ── Live ────────────────────────────────────────────────────
-    const liveArr = extractArr(liveJson);
-    if (liveArr.length) {
-      S.liveItems = liveArr.map((ch, i) => ({
-        title    : ch.title || ch.name || 'Sans titre',
-        image    : ch.stream_icon || ch.image || '',
-        category : ch.category_name || ch.category || 'Live TV',
-        plot     : ch.plot || '',
-        url      : ch.stream_url || ch.url || `http://goldenlink.live/live/${U}/${P}/${ch.stream_id || i}.ts`,
-        stream_id: ch.stream_id || ch.id || String(i),
-        isLive   : true,
-      }));
-    } else {
-      const apiLive = await bridgeFetch(`${API}?username=${U}&password=${P}&action=get_live_streams`);
-      if (Array.isArray(apiLive)) {
-        S.liveItems = apiLive.map(ch => ({
-          title    : ch.name,
-          image    : ch.stream_icon || '',
-          category : ch.category_name || 'Live TV',
-          plot     : '',
-          url      : `http://goldenlink.live/live/${U}/${P}/${ch.stream_id}.ts`,
-          stream_id: ch.stream_id,
-          isLive   : true,
-        }));
-      }
-    }
-
-    // ── Rows accueil ─────────────────────────────────────────────
-    const rows = [];
-    const _adultRe = /adult|xxx|porn|x{2,}|hentai|erotic/i;
-    const isClean = i => !_adultRe.test(i.category || '') && !_adultRe.test(i.title || '');
-    const pool = S.allItems.filter(i => i.image && isClean(i));
-    S.heroPool = pool;
-
-    // "Continuer à regarder" — historique films/séries uniquement (pas live, pas adulte)
-    const histItems = getHist().slice(0, 15).map(h => h.item).filter(i => i && !i.isLive && isClean(i));
-    if (histItems.length) rows.push({ title: '▶ Continuer à regarder', items: histItems });
-
-    // "Mes favoris"
-    const favItems = getFavs().slice(0, 30).map(f => f.item).filter(i => i && isClean(i));
-    if (favItems.length) rows.push({ title: '♥ Mes favoris', items: favItems });
-
-    // "Recommandé"
-    if (pool.length) rows.push({ title: 'Recommandé pour vous', items: shuffle(pool).slice(0, 20) });
-
-    // Par catégorie — exclure adulte + exclure "Latest" (doublon avec récents)
-    const _latestRe = /latest|nouveau|new.arriv/i;
+    // Rows
+    const rows=[];
+    const histItems=getHist().slice(0,15).map(h=>h.item).filter(i=>i&&!i.isLive&&isClean(i));
+    if(histItems.length) rows.push({title:'▶ Continuer à regarder',items:histItems});
+    const favItems=getFavs().slice(0,30).map(f=>f.item).filter(i=>i&&isClean(i));
+    if(favItems.length) rows.push({title:'♥ Mes favoris',items:favItems});
+    if(S.heroPool.length) rows.push({title:'Recommandé pour vous',items:shuffle(S.heroPool).slice(0,25)});
     Object.entries(byCat)
-      .filter(([cat]) => !_adultRe.test(cat) && !_latestRe.test(cat))
-      .sort((a, b) => b[1].length - a[1].length)
-      .filter(([, v]) => v.length >= 3)
-      .slice(0, 18)
-      .forEach(([cat, items]) => rows.push({ title: cat, items: items.filter(isClean).slice(0, 40) }));
+      .filter(([cat])=>!ADULT_RE.test(cat)&&!LATEST_RE.test(cat))
+      .sort((a,b)=>b[1].length-a[1].length)
+      .filter(([,v])=>v.length>=3).slice(0,20)
+      .forEach(([cat,items])=>rows.push({title:cat,items:items.filter(isClean).slice(0,40)}));
+    if(S.liveItems.length) rows.push({title:'TV en Direct',items:S.liveItems.slice(0,30),isLive:true});
+    S.rows=rows;
 
-    // "TV en Direct"
-    if (S.liveItems.length) {
-      const grouped = groupLiveItems(S.liveItems);
-      rows.push({ title: 'TV en Direct', items: grouped.slice(0, 30), isLive: true });
-    }
-
-    S.rows = rows;
-    if (S.heroPool.length) setHero(S.heroPool[Math.floor(Math.random() * Math.min(S.heroPool.length, 20))]);
+    if(S.heroPool.length) setHero(S.heroPool[Math.floor(Math.random()*Math.min(S.heroPool.length,30))]);
     renderRows(rows);
-
     clearInterval(S.heroTimer);
-    S.heroTimer = setInterval(() => {
-      if (S.zone !== 'hero') return;
-      const p = S.heroPool;
-      if (p.length) setHero(p[Math.floor(Math.random() * Math.min(p.length, 20))]);
-    }, 30000); // 30s pour éviter les recharges fréquentes d'images
-
-  } finally {
-    $('loading').style.display = 'none';
+    S.heroTimer=setInterval(()=>{
+      if(S.zone!=='hero') return;
+      if(S.heroPool.length) setHero(S.heroPool[Math.floor(Math.random()*Math.min(S.heroPool.length,30))]);
+    },30000);
+    S.zone='hero'; S.hBtn=0; focus();
+  }finally{
+    $('loading').hidden=true;
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  AURA — désactivée pour fluidité (Android WebView)
-// ═══════════════════════════════════════════════════════════════════
-let _auraActive = 0;
-function updateAura(imgUrl) {
-  return; // désactivé
-  const next = _auraActive === 1 ? 2 : 1;
-  const el = $('aura-' + next);
-  if (!el) return;
-  el.style.backgroundImage = `url('${imgUrl}')`;
-  requestAnimationFrame(() => {
-    el.style.opacity = '1';
-    const prev = $('aura-' + _auraActive);
-    if (prev && _auraActive !== 0) prev.style.opacity = '0';
-    _auraActive = next;
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
 //  HERO
-// ═══════════════════════════════════════════════════════════════════
-function setHero(item) {
-  S.heroItem = item;
-  $('htitle').textContent = item.title;
-  $('hmeta').textContent  = item.category||'';
-  $('hplot').textContent  = item.plot||'';
-  // Show "En vedette" tag when there's a plot
-  const htag = $('htag');
-  htag.style.display = item.plot ? 'inline-flex' : 'none';
-  // Update ambient background (Aura effect)
-  if (item.image) updateAura(item.image);
-  const hbg = $('hbg');
-  hbg.style.opacity = '0';
-  setTimeout(() => {
-    if (item.image) {
-      hbg.style.backgroundImage = `url('${item.image}')`;
-      $('hposter').src = item.image;
-      $('hposter').style.display = 'block';
-      $('hposter').style.opacity = '0';
-      setTimeout(()=>{ $('hposter').style.opacity='1'; }, 60);
-    } else {
-      hbg.style.backgroundImage = '';
-      $('hposter').style.display = 'none';
-    }
-    hbg.style.opacity = '1';
-  }, 280);
+// ══════════════════════════════════════════════════
+function setHero(item){
+  if(!item) return; S.heroItem=item;
+  $('hero-title').textContent=item.title||'';
+  $('hero-meta').textContent=[item.category,item.quality].filter(Boolean).join(' · ');
+  if(item.image){
+    $('hero-bg').style.backgroundImage=`url('${item.image}')`;
+    const p=$('hero-poster'); p.src=item.image; p.style.display='block';
+    p.onerror=()=>{ p.style.display='none'; };
+  }
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  RENDER ROWS
-// ═══════════════════════════════════════════════════════════════════
-function renderRows(rows) {
+// ══════════════════════════════════════════════════
+//  ROWS
+// ══════════════════════════════════════════════════
+function renderRows(rows){
   const c=$('content'); c.innerHTML='';
   rows.forEach((row,ri)=>{
-    const div=document.createElement('div'); div.className='row'; div.dataset.ri=ri;
-    const h=document.createElement('div'); h.className='row-title'; h.textContent=row.title;
-    const wrap=document.createElement('div'); wrap.className='row-items'; wrap.id='ri'+ri;
-    row.items.forEach((item,ci)=>wrap.appendChild(mkCard(item,ri,ci,row.isLive)));
-    // "Voir tout" card at end (except for very small rows)
-    if (row.items.length >= 5) {
-      const vt = document.createElement('div');
-      vt.className = 'voir-tout-card';
-      vt.dataset.voirtout = '1';
-      vt.dataset.ri = ri;
-      const inner = document.createElement('div');
-      inner.className = 'voir-tout-inner';
-      inner.textContent = 'Voir tout';
-      vt.appendChild(inner);
-      vt.addEventListener('click', () => _gotoRowAll(row));
-      wrap.appendChild(vt);
-    }
-    div.appendChild(h); div.appendChild(wrap); c.appendChild(div);
+    const rowEl=document.createElement('div');
+    rowEl.className='row'; rowEl.dataset.ri=ri;
+    rowEl.innerHTML=`<div class="row-title">${esc(row.title)}</div>`;
+    const items=document.createElement('div');
+    items.className='row-items'; items.id='ri'+ri;
+    row.items.forEach((item,ci)=>items.appendChild(mkCard(item,ri,ci,row.isLive)));
+    rowEl.appendChild(items); c.appendChild(rowEl);
   });
 }
 
-function _gotoRowAll(row) {
-  // Navigue vers la grille appropriée filtrée par catégorie de la rangée
-  if (row.isLive) { gotoSection('live'); return; }
-  const isSerien = row.items.some(i => i.series_id);
-  const isMixed  = row.items.some(i => i.series_id) && row.items.some(i => !i.series_id);
-  const sec = isMixed ? 'movies' : (isSerien ? 'shows' : 'movies');
-  gotoSection(sec);
-  // Appliquer filtre catégorie si la rangée a une catégorie homogène
-  if (row._cat) { S.gridFilter = row._cat; applyGridFilters(); }
-}
+// ══════════════════════════════════════════════════
+//  CARD
+// ══════════════════════════════════════════════════
+function mkCard(item,ri,ci,isLive){
+  const live=isLive||item.isLive||false;
+  const c=document.createElement('div');
+  c.className='card'+(live?' live':'');
+  c.dataset.ri=ri; c.dataset.ci=ci;
 
-const BLANK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='243'%3E%3Crect fill='%23111' width='180' height='243'/%3E%3Ctext x='90' y='121' fill='%23333' font-size='48' text-anchor='middle' dy='.35em'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E";
+  const wrap=document.createElement('div'); wrap.className='card-wrap';
+  const img=document.createElement('img');
+  img.src=item.image||BLANK; img.loading='lazy';
+  img.onerror=()=>{ img.src=BLANK; img.onerror=null; };
+  wrap.appendChild(img);
 
-function mkCard(item, ri, ci, isLive) {
-  const lv = isLive || item.isLive || false;
-  const c  = document.createElement('div');
-  c.className    = 'card' + (lv ? ' live' : '');
-  c.dataset.ri   = ri;
-  c.dataset.ci   = ci;
-
-  // image — supporte les deux champs: item.image (normalise) et item.stream_icon (raw)
-  const imgSrc = item.image || item.stream_icon || '';
-  const img    = document.createElement('img');
-  img.src       = imgSrc || BLANK;
-  img.loading   = 'lazy';
-  img.alt       = item.title;
-  img.onerror   = () => { img.src = BLANK; img.onerror = null; };
-
-  // Image wrapper (needed for progress bar overlay)
-  const imgWrap = document.createElement('div');
-  imgWrap.className = 'card-img-wrap';
-  imgWrap.appendChild(img);
-
-  // Progress bar (VOD only, based on saved progress)
-  if (!lv && item.stream_id) {
-    c.dataset.progKey = 'vid_' + item.stream_id;
-    const pct = getProg()['vid_' + item.stream_id]?.pct || 0;
-    if (pct > 2) {
-      const pb = document.createElement('div'); pb.className = 'card-prog-bar';
-      const pf = document.createElement('div'); pf.className = 'card-prog-fill';
-      pf.style.width = Math.min(pct, 100) + '%';
-      pb.appendChild(pf); imgWrap.appendChild(pb);
+  // Progress bar
+  if(!live&&item.stream_id){
+    const pk='vid_'+item.stream_id; c.dataset.progKey=pk;
+    const pct=getProg()[pk]?.pct||0;
+    if(pct>2){
+      const pb=document.createElement('div'); pb.className='cprog';
+      const pf=document.createElement('div'); pf.className='cprog-fill';
+      pf.style.width=Math.min(pct,100)+'%';
+      pb.appendChild(pf); wrap.appendChild(pb);
     }
   }
 
-  const info = document.createElement('div'); info.className = 'cinfo';
-  const t    = document.createElement('div'); t.className = 'ctitle'; t.textContent = item.title;
-  const ca   = document.createElement('div'); ca.className = 'ccat';
-  ca.textContent = item.category || item.category_name || (lv ? 'Live' : '');
-  info.append(t, ca);
-  c.append(imgWrap, info);
+  // Badge
+  const badge=document.createElement('span'); badge.className='cbadge';
+  if(live){ badge.textContent='LIVE'; badge.classList.add('cbadge-live'); }
+  else if(item.series_id){ badge.textContent='SÉRIE'; badge.classList.add('cbadge-serie'); }
+  else{ badge.textContent='FILM'; badge.classList.add('cbadge-film'); }
+  wrap.appendChild(badge);
+  c.appendChild(wrap);
 
-  // Type badge (top-left)
-  const badge = document.createElement('span');
-  badge.className = 'ctype-badge';
-  if (lv) {
-    badge.textContent = 'LIVE'; badge.classList.add('ctype-live');
-  } else if (item.series_id) {
-    badge.textContent = 'SÉRIE'; badge.classList.add('ctype-serie');
-  } else {
-    badge.textContent = 'FILM'; badge.classList.add('ctype-film');
-  }
-  imgWrap.appendChild(badge);
-
-  // Quality badge (top-right, VOD/séries only)
-  if (!lv && item.quality) {
-    const qb = document.createElement('span');
-    qb.className = 'card-qual';
-    qb.textContent = item.quality;
-    imgWrap.appendChild(qb);
-  }
-
-  // Fav button (bottom-right of image)
-  if (!lv) {
-    const fb = document.createElement('button');
-    const faved = isFav(item);
-    fb.className = 'card-fav-btn' + (faved ? ' is-fav' : '');
-    fb.textContent = faved ? '♥' : '♡';
-    fb.addEventListener('click', e => {
-      e.stopPropagation();
-      const now = toggleFav(item);
-      fb.classList.toggle('is-fav', now);
-      fb.textContent = now ? '♥' : '♡';
-    });
-    imgWrap.appendChild(fb);
-  }
-
+  const info=document.createElement('div'); info.className='cinfo';
+  const t=document.createElement('div'); t.className='ctitle'; t.textContent=item.title;
+  const cat=document.createElement('div'); cat.className='ccat'; cat.textContent=item.category||'';
+  info.append(t,cat); c.appendChild(info);
+  c.addEventListener('click',()=>openItem(item));
   return c;
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  RENDER GRID
-// ═══════════════════════════════════════════════════════════════════
-function renderGrid(items, isLive) {
-  S.gridItems    = items;
-  S.gridAllItems = items;
-  S.gridFilter   = '';
-  S.gridQuality  = '';
-  const titleEl = $('grid-title');
-  if (titleEl) {
-    const labels = { movies:'Films', shows:'Séries', live:'TV en Direct' };
-    titleEl.textContent = labels[S.sec] || '';
-  }
-  buildFilterBar(items, isLive);
-  const w = $('grid-wrap'); w.innerHTML = '';
-  items.forEach((item, i) => {
-    const c = mkCard(item, -1, i, isLive);
-    c.dataset.gi = i;
-    w.appendChild(c);
-  });
+// ══════════════════════════════════════════════════
+//  GRID
+// ══════════════════════════════════════════════════
+function renderGrid(items,isLive,title){
+  S.gridAll=items; S.gridItems=items;
+  S.gridFilter=''; S.gridQuality=''; S.gridFavOnly=false; S.gridSort='title';
+  S.gridIdx=0; S.filterIdx=0;
+  $('grid-title').textContent=title||'';
+  buildFilterBar(items,isLive);
+  applyGridFilters();
 }
 
-function buildFilterBar(items, isLive) {
-  const fb = $('filter-bar');
-  if (!fb) return;
-  // Reset sort on new grid
-  S.gridSort = 'title';
-  S.gridFavOnly = false;
-
-  const pills = [
-    { label: 'Tous',    value: '', type: 'all' },
-    { label: '♥ Favoris', value: 'favs', type: 'fav' },
-  ];
-  if (!isLive) {
-    if (items.some(i => i.quality === '4K')) pills.push({ label: '4K',  value: '4K', type: 'q' });
-    if (items.some(i => i.quality === 'HD')) pills.push({ label: 'HD',  value: 'HD', type: 'q' });
-    if (items.some(i => i.quality === 'SD')) pills.push({ label: 'SD',  value: 'SD', type: 'q' });
+function buildFilterBar(items,isLive){
+  const fb=$('filter-bar'); fb.innerHTML=''; S.filterPills=[];
+  const add=(label,type,value)=>S.filterPills.push({label,type,value});
+  add('Tous','all',''); add('♥ Favoris','fav','');
+  if(!isLive){
+    if(items.some(i=>i.quality==='4K')) add('4K','q','4K');
+    if(items.some(i=>i.quality==='HD')) add('HD','q','HD');
+    if(items.some(i=>i.quality==='SD')) add('SD','q','SD');
   }
-  const cats = [...new Set(items.map(i => i.category || '').filter(Boolean))].sort().slice(0, 20);
-  cats.forEach(cat => pills.push({ label: cat, value: cat, type: 'cat' }));
-  // Séparateur + tri
-  pills.push({ type: 'sep' });
-  pills.push({ label: 'A–Z',    value: 'title',  type: 'sort' });
-  pills.push({ label: '+ Récent', value: 'recent', type: 'sort' });
-
-  fb.innerHTML = '';
-  pills.forEach((p, i) => {
-    if (p.type === 'sep') {
-      const sep = document.createElement('div');
-      sep.className = 'fpill-sep';
-      fb.appendChild(sep);
-      return;
-    }
-    const el = document.createElement('div');
-    el.className = 'fpill';
-    el.dataset.idx  = i;
-    el.dataset.type = p.type;
-    el.dataset.value= p.value;
-    el.textContent  = p.label;
-    // Set initial active state
-    if (p.type === 'all') el.classList.add('active');
-    if (p.type === 'sort' && p.value === S.gridSort) el.classList.add('active');
-    el.addEventListener('click', () => {
-      const type = el.dataset.type, val = el.dataset.value;
-      if      (type === 'all')  { S.gridFilter = ''; S.gridQuality = ''; S.gridFavOnly = false; }
-      else if (type === 'fav')  { S.gridFavOnly = !S.gridFavOnly; S.gridFilter = ''; S.gridQuality = ''; }
-      else if (type === 'q')    { S.gridQuality = S.gridQuality === val ? '' : val; S.gridFilter = ''; S.gridFavOnly = false; }
-      else if (type === 'cat')  { S.gridFilter  = S.gridFilter  === val ? '' : val; S.gridQuality = ''; S.gridFavOnly = false; }
-      else if (type === 'sort') { S.gridSort = val; }
-      applyGridFilters();
-    });
+  const cats=[...new Set(items.map(i=>i.category||'').filter(Boolean))].sort().slice(0,18);
+  cats.forEach(cat=>add(cat,'cat',cat));
+  S.filterPills.push({type:'sep'});
+  add('A–Z','sort','title'); add('+ Récent','sort','recent');
+  S.filterPills.forEach((p,idx)=>{
+    if(p.type==='sep'){ const s=document.createElement('div'); s.className='fpill-sep'; fb.appendChild(s); return; }
+    const el=document.createElement('div');
+    el.className='fpill'+(p.type==='all'?' active':'');
+    el.dataset.idx=idx; el.textContent=p.label;
+    el.addEventListener('click',()=>activateFilter(idx));
     fb.appendChild(el);
   });
 }
 
-function applyGridFilters() {
-  const isLive = S.sec === 'live';
-  let filtered = S.gridAllItems;
-  if (S.gridFavOnly)  filtered = filtered.filter(i => isFav(i));
-  if (S.gridFilter)   filtered = filtered.filter(i => i.category === S.gridFilter);
-  if (S.gridQuality)  filtered = filtered.filter(i => i.quality  === S.gridQuality);
-  // Tri
-  if (S.gridSort === 'title')  filtered = [...filtered].sort((a, b) => (a.title||'').localeCompare(b.title||'', 'fr'));
-  if (S.gridSort === 'recent') filtered = [...filtered].sort((a, b) => Number(b.added||0) - Number(a.added||0));
-  if (S.gridSort === 'cat')    filtered = [...filtered].sort((a, b) => (a.category||'').localeCompare(b.category||'','fr'));
-  // Mise à jour des pills
-  $('filter-bar')?.querySelectorAll('.fpill').forEach(p => {
-    const type = p.dataset.type, val = p.dataset.value;
-    const active =
-      (type==='all'  && !S.gridFilter && !S.gridQuality && !S.gridFavOnly) ||
-      (type==='fav'  && S.gridFavOnly) ||
-      (type==='q'    && val === S.gridQuality) ||
-      (type==='cat'  && val === S.gridFilter) ||
-      (type==='sort' && val === S.gridSort);
-    p.classList.toggle('active', active);
-  });
-  S.gridItems = filtered;
-  const w = $('grid-wrap');
-  if (!w) return;
-  w.innerHTML = '';
-  filtered.forEach((item, i) => {
-    const c = mkCard(item, -1, i, isLive);
-    c.dataset.gi = i;
-    w.appendChild(c);
-  });
-  S.gridIdx = 0;
-  if (S.zone === 'grid' || S.zone === 'filter') focus();
+function activateFilter(idx){
+  S.filterIdx=idx;
+  const p=S.filterPills[idx]; if(!p||p.type==='sep') return;
+  if(p.type==='all'){ S.gridFilter=''; S.gridQuality=''; S.gridFavOnly=false; }
+  else if(p.type==='fav'){ S.gridFavOnly=!S.gridFavOnly; S.gridFilter=''; S.gridQuality=''; }
+  else if(p.type==='q'){ S.gridQuality=S.gridQuality===p.value?'':p.value; S.gridFilter=''; S.gridFavOnly=false; }
+  else if(p.type==='cat'){ S.gridFilter=S.gridFilter===p.value?'':p.value; S.gridQuality=''; S.gridFavOnly=false; }
+  else if(p.type==='sort'){ S.gridSort=p.value; }
+  applyGridFilters(); focus();
 }
 
-// ─── Refresh progress bar on a card without re-render ────────────
-function _refreshCardProgress(key, pct) {
-  document.querySelectorAll(`[data-prog-key="${key}"]`).forEach(card => {
-    const wrap = card.querySelector('.card-img-wrap');
-    if (!wrap) return;
-    let bar = wrap.querySelector('.card-prog-bar');
-    if (pct < 2) { if (bar) bar.remove(); return; }
-    if (!bar) {
-      bar = document.createElement('div'); bar.className = 'card-prog-bar';
-      const fill = document.createElement('div'); fill.className = 'card-prog-fill';
-      bar.appendChild(fill); wrap.appendChild(bar);
-    }
-    const fill = bar.querySelector('.card-prog-fill');
-    if (fill) fill.style.width = Math.min(pct, 100) + '%';
+function applyGridFilters(){
+  let items=S.gridAll;
+  if(S.gridFavOnly) items=items.filter(i=>isFav(i));
+  if(S.gridFilter)  items=items.filter(i=>i.category===S.gridFilter);
+  if(S.gridQuality) items=items.filter(i=>i.quality===S.gridQuality);
+  if(S.gridSort==='title')  items=[...items].sort((a,b)=>(a.title||'').localeCompare(b.title||'','fr'));
+  if(S.gridSort==='recent') items=[...items].sort((a,b)=>Number(b.added||0)-Number(a.added||0));
+  S.gridItems=items;
+  // Update pills active
+  qAll('.fpill').forEach(el=>{
+    const idx=Number(el.dataset.idx); const p=S.filterPills[idx]; if(!p) return;
+    const active=(p.type==='all'&&!S.gridFilter&&!S.gridQuality&&!S.gridFavOnly)
+      ||(p.type==='fav'&&S.gridFavOnly)||(p.type==='q'&&S.gridQuality===p.value)
+      ||(p.type==='cat'&&S.gridFilter===p.value)||(p.type==='sort'&&S.gridSort===p.value&&p.value!=='title');
+    el.classList.toggle('active',!!active);
   });
+  // Render cards
+  const wrap=$('grid-wrap'); wrap.innerHTML='';
+  items.forEach((item,idx)=>{ const c=mkCard(item,-1,idx,item.isLive); c.dataset.ci=idx; wrap.appendChild(c); });
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  FOCUS MANAGEMENT
-// ═══════════════════════════════════════════════════════════════════
-function clearFoc() { qAll('.foc').forEach(e=>e.classList.remove('foc')); }
+// ══════════════════════════════════════════════════
+//  OPEN ITEM
+// ══════════════════════════════════════════════════
+function openItem(item){
+  if(!item) return;
+  if(item.isLive){ playItem(item); return; }
+  openPanel(item);
+}
 
-function focus() {
-  clearFoc();
-  const z=S.zone;
+// ══════════════════════════════════════════════════
+//  PANEL
+// ══════════════════════════════════════════════════
+function openPanel(item){
+  S.panelItem=item; S.panelIsVod=!item.series_id;
+  S.panelActIdx=0; S.panelTabIdx=0; S.panelEpIdx=0;
+  S.panelSmap={}; S.panelSmeta=[]; S.panelSelSeason=null; S.panelEps=[];
+  S.zone='panel-acts';
+  $('panel-kicker').textContent=item.series_id?'Série':'Film';
+  $('panel-title').textContent=item.title||'';
+  $('panel-meta').textContent=[item.category,item.quality].filter(Boolean).join(' · ');
+  $('panel-plot').textContent=item.plot||'';
+  const poster=$('panel-poster'); poster.src=item.image||BLANK;
+  poster.onerror=()=>{ poster.src=BLANK; };
+  updatePanelFavBtn();
+  $('panel-tabs').innerHTML='';
+  $('panel-eps').innerHTML='<div style="padding:20px;color:rgba(255,255,255,.4)"><span class="spin" style="display:inline-block;width:18px;height:18px;margin-right:8px"></span>Chargement…</div>';
+  $('panel').hidden=false; focus();
 
-  if (z==='nav') {
-    qAll('.ni')[S.navIdx]?.classList.add('foc');
-    return;
-  }
-  if (z==='hero') {
-    [$('btn-play'),$('btn-info')][S.hBtn]?.classList.add('foc');
-    return;
-  }
-  if (z==='row') {
-    const row=document.querySelector(`#ri${S.rowIdx}`);
-    if (row) {
-      const cards=row.querySelectorAll('.card');
-      const c=cards[S.cardIdx];
-      if (c) { c.classList.add('foc'); c.scrollIntoView({inline:'nearest',block:'nearest'}); }
-    }
-    document.querySelector(`.row[data-ri="${S.rowIdx}"]`)?.scrollIntoView({block:'nearest'});
-    return;
-  }
-  if (z==='filter') {
-    qAll('.fpill').forEach(p => p.classList.remove('foc'));
-    qAll('.fpill')[S.filterIdx]?.classList.add('foc');
-    qAll('.fpill')[S.filterIdx]?.scrollIntoView({inline:'nearest',block:'nearest'});
-    return;
-  }
-  if (z==='grid') {
-    const cards=$('grid-wrap').querySelectorAll('.card');
-    const c=cards[S.gridIdx];
-    if (c) { c.classList.add('foc'); c.scrollIntoView({inline:'nearest',block:'nearest'}); }
-    return;
-  }
-  if (z==='settings') {
-    $(SET_ROWS[S.setIdx])?.classList.add('foc');
-    return;
-  }
-  if (z==='search') {
-    $('sbox').classList.add('foc');
-    $('sinput').focus();
-    return;
+  if(item.series_id){
+    loadEps(item).then(({seasonsMap,seasonsMeta})=>{
+      S.panelSmap=seasonsMap; S.panelSmeta=seasonsMeta;
+      const keys=Object.keys(seasonsMap).sort((a,b)=>Number(a)-Number(b));
+      S.panelSelSeason=keys[0]||null;
+      renderPanelTabs(); renderPanelEps(); focus();
+    });
+  } else {
+    $('panel-eps').innerHTML='';
+    if(!item.plot){ fetchVodPlot(item).then(p=>{ if(p){ item.plot=p; $('panel-plot').textContent=p; } }); }
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  D-PAD NAVIGATION
-// ═══════════════════════════════════════════════════════════════════
-window.addEventListener('tv_up',    ()=>nav('u'));
-window.addEventListener('tv_down',  ()=>nav('d'));
-window.addEventListener('tv_left',  ()=>nav('l'));
-window.addEventListener('tv_right', ()=>nav('r'));
-window.addEventListener('tv_enter', ()=>select());
-window.addEventListener('tv_back',  ()=>back());
-window.addEventListener('tv_menu',  ()=>toggleNav());
+function updatePanelFavBtn(){
+  const fav=isFav(S.panelItem);
+  const btn=$('panel-btn-fav');
+  btn.textContent=fav?'♥ Favori':'♡ Favoris';
+  btn.classList.toggle('is-fav',fav);
+}
 
-document.addEventListener('keydown',e=>{
-  const map={ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r',Enter:'e',Escape:'b',Backspace:'b'};
-  const k=map[e.key];
-  if (!k) return;
-  e.preventDefault();
-  if(k==='e') select(); else if(k==='b') back(); else nav(k);
-});
+function renderPanelTabs(){
+  const tabs=$('panel-tabs'); tabs.innerHTML='';
+  const keys=Object.keys(S.panelSmap).sort((a,b)=>Number(a)-Number(b));
+  if(keys.length<=1){ tabs.hidden=true; return; }
+  tabs.hidden=false;
+  keys.forEach((sk,idx)=>{
+    const m=S.panelSmeta.find(x=>String(x.num)===sk);
+    const btn=document.createElement('button');
+    btn.className='panel-tab'+(sk===S.panelSelSeason?' active':'');
+    btn.dataset.season=sk; btn.dataset.idx=idx;
+    btn.textContent=(m?m.name:`Saison ${sk}`)+` (${(S.panelSmap[sk]||[]).length})`;
+    btn.addEventListener('click',()=>{ S.panelSelSeason=sk; S.panelTabIdx=idx; renderPanelTabs(); renderPanelEps(); focus(); });
+    tabs.appendChild(btn);
+  });
+}
 
-function nav(dir) {
-  if (S._forceUpdateActive) return;
-  const z=S.zone;
+function renderPanelEps(){
+  const eps=S.panelSmap[S.panelSelSeason]||[];
+  S.panelEps=eps;
+  const c=$('panel-eps'); c.innerHTML='';
+  if(!eps.length){ c.innerHTML='<div style="padding:20px;color:rgba(255,255,255,.4)">Aucun épisode disponible.</div>'; return; }
+  const prog=getProg();
+  eps.forEach((ep,idx)=>{
+    const code=`S${String(S.panelSelSeason).padStart(2,'0')}E${String(ep.episode_num).padStart(2,'0')}`;
+    const pk=`${S.panelItem.series_id}||${code}`;
+    const pct=prog[pk]?.pct||0; const done=pct>=90;
+    const el=document.createElement('div');
+    el.className='pep'+(done?' done':''); el.dataset.idx=idx;
+    const thumb=ep.thumb?`<img class="pep-thumb" src="${esc(ep.thumb)}" loading="lazy">`:`<div class="pep-thumb"></div>`;
+    el.innerHTML=`${thumb}
+      <div style="flex:1;min-width:0">
+        <div class="pep-code">${esc(code)}</div>
+        <div class="pep-title">${esc(ep.title||'Sans titre')}</div>
+        ${pct>2&&!done?`<div class="pep-pct">${Math.round(pct)}% vu</div><div class="ep-prog"><div class="ep-prog-fill" style="width:${Math.min(pct,100)}%"></div></div>`:''}
+      </div>
+      <div class="pep-play">${done?'✓':'▶'}</div>`;
+    el.addEventListener('click',()=>playPanelEp(idx));
+    c.appendChild(el);
+  });
+}
 
-  if (z==='resume') {
-    if (dir==='l'||dir==='r') {
-      S._resumeModalBtnIdx = S._resumeModalBtnIdx === 0 ? 1 : 0;
-      _focusResumeModal();
-    } else if (dir==='u'||dir==='d') {
-      // no-op in vertical direction
+function closePanel(){
+  $('panel').hidden=true;
+  S.zone=S.sec==='home'?'row':'grid';
+  if(S.zone==='row') S.rowIdx=Math.max(0,S.rowIdx);
+  focus();
+}
+
+// ══════════════════════════════════════════════════
+//  EPISODES LOADING
+// ══════════════════════════════════════════════════
+let _epMap=null,_epMapP=null;
+const _epChunks={};
+
+async function getEpMap(){
+  if(_epMap) return _epMap;
+  if(_epMapP) return _epMapP;
+  _epMapP=loadJSON(GH+'episodes_map.json').then(m=>{ _epMap=m||{}; return _epMap; });
+  return _epMapP;
+}
+
+async function loadEps(series){
+  const ck=`s_${series.series_id}_${series.title}`;
+  if(S.epCache[ck]) return S.epCache[ck];
+  const sid=String(series.series_id||'');
+  if(sid){
+    const map=await getEpMap(); const cn=map[sid];
+    if(cn){
+      if(!_epChunks[cn]) _epChunks[cn]=loadJSON(`${GH}episodes_part${cn}.json`).then(chunk=>{
+        if(chunk&&typeof chunk==='object'){ window._epDb=window._epDb||{}; Object.assign(window._epDb,chunk); }
+      });
+      await _epChunks[cn];
+      const db=window._epDb?.[sid];
+      if(db){
+        const smap={};
+        Object.entries(db.seasons||{}).forEach(([sk,epList])=>{
+          smap[String(sk)]=epList.map(ep=>({
+            id:ep.id,episode_num:ep.episode_num,season:ep.season,
+            title:cleanEpTitle(ep.title||'',series.title)||`Épisode ${ep.episode_num}`,
+            url:ep.url,stream_url:ep.url,container_extension:ep.ext||'mkv',
+            duration:ep.duration||'',plot:ep.plot||'',thumb:ep.thumb||''
+          }));
+        });
+        const smeta=(db.seasonsMeta||[]).map(s=>({num:s.num,name:s.name||`Saison ${s.num}`,cover:s.cover||'',count:s.count||0}));
+        if(db.meta){ if(!series.plot&&db.meta.plot) series.plot=db.meta.plot; if(!series.image&&db.meta.cover) series.image=db.meta.cover; }
+        const result={seasonsMap:smap,seasonsMeta:smeta}; S.epCache[ck]=result; return result;
+      }
     }
-    return;
   }
-
-  if (z==='panel') {
-    const panel=$('seriesPanel');
-    if (S.panelZone==='acts') {
-      const btns=panel?panel.querySelectorAll('.spp-acts .spp-btn'):[];
-      if (dir==='l') S.panelActIdx=Math.max(0,S.panelActIdx-1);
-      else if (dir==='r') S.panelActIdx=Math.min(btns.length-1,S.panelActIdx+1);
-      else if (dir==='d'&&!S.panelIsVod&&Object.keys(S.panelSmap).length) { S.panelZone='tabs'; S.panelTabIdx=0; }
-    } else if (S.panelZone==='tabs') {
-      const keys=Object.keys(S.panelSmap).sort((a,b)=>Number(a)-Number(b));
-      if (dir==='u') { S.panelZone='acts'; }
-      else if (dir==='d') { S.panelZone='eps'; S.panelEpIdx=0; }
-      else if (dir==='l'||dir==='r') {
-        S.panelTabIdx=dir==='l'?Math.max(0,S.panelTabIdx-1):Math.min(keys.length-1,S.panelTabIdx+1);
-        const sk=keys[S.panelTabIdx];
-        if(sk&&sk!==S.panelSelSeason){
-          S.panelSelSeason=sk; S.panelEps=S.panelSmap[sk]||[]; S.panelEpIdx=0;
-          panel?.querySelectorAll('.spp-tab').forEach(t=>t.classList.toggle('active',t.dataset.sk===sk));
-          renderEpList();
+  // Fallback Xtream API
+  const apiUrl=(series.url||'').replace(/^https?:\/\//i,'http://');
+  if(!apiUrl) return {seasonsMap:{},seasonsMeta:[]};
+  const data=await bridgeFetch(apiUrl);
+  if(!data) return {seasonsMap:{},seasonsMeta:[]};
+  const smap={};
+  if(data.episodes&&typeof data.episodes==='object'){
+    Object.entries(data.episodes).forEach(([sk,epList])=>{
+      if(!Array.isArray(epList)) return;
+      smap[String(sk)]=epList.filter(ep=>ep&&(ep.id||ep.episode_num)).map(ep=>{
+        let url=ep.url||'';
+        if(!url||url.includes('player_api')){
+          try{
+            const pu=new URL(apiUrl); const ext=ep.container_extension||'mkv';
+            const un=pu.searchParams.get('username'),pw=pu.searchParams.get('password');
+            if(un&&pw&&ep.id) url=`${pu.origin}/series/${un}/${pw}/${ep.id}.${ext}`;
+          }catch{}
         }
+        return {id:ep.id,episode_num:Number(ep.episode_num)||1,season:Number(ep.season||sk),
+          title:cleanEpTitle(ep.title||ep.name||'',series.title)||`Épisode ${ep.episode_num}`,
+          url,stream_url:url,container_extension:ep.container_extension||'mkv',
+          duration:ep.info?.duration||'',plot:ep.info?.plot||'',thumb:ep.info?.movie_image||''};
+      }).sort((a,b)=>a.episode_num-b.episode_num);
+    });
+  }
+  const smeta=Array.isArray(data.seasons)
+    ?data.seasons.filter(s=>s.season_number>0).sort((a,b)=>a.season_number-b.season_number)
+        .map(s=>({num:s.season_number,name:s.name||`Saison ${s.season_number}`,cover:s.cover_big||s.cover||'',count:s.episode_count||0}))
+    :[];
+  if(data.info){ if(!series.plot) series.plot=data.info.plot||data.info.description||''; if(!series.image) series.image=data.info.cover||''; }
+  const result={seasonsMap:smap,seasonsMeta:smeta}; S.epCache[ck]=result; return result;
+}
+
+async function fetchVodPlot(item){
+  const u=item.url||''; if(!u) return null;
+  try{
+    const pu=new URL(u); let un='',pw='';
+    const parts=pu.pathname.split('/').filter(Boolean);
+    if(parts[0]==='movie'&&parts.length>=3){ un=parts[1]; pw=parts[2]; }
+    else{ un=pu.searchParams.get('username')||''; pw=pu.searchParams.get('password')||''; }
+    if(!un||!pw) return null;
+    const vid=item.stream_id||String(item.id||''); if(!vid) return null;
+    const apiUrl=`http://${pu.hostname}/player_api.php?username=${un}&password=${pw}&action=get_vod_info&vod_id=${vid}`;
+    const json=await bridgeFetch(apiUrl);
+    return json?.info?.plot||json?.info?.description||null;
+  }catch{ return null; }
+}
+
+// ══════════════════════════════════════════════════
+//  PLAYBACK
+// ══════════════════════════════════════════════════
+function playItem(item,startMs){
+  if(!item) return;
+  pushHist(item);
+  S.lastProgItem=item;
+  S.lastProgKey=item.stream_id?'vid_'+item.stream_id:null;
+  const url=(item.url||item.stream_url||'').replace(/^https?:\/\//i,'http://');
+  if(window.AndroidBridge?.openInVlc){
+    try{ AndroidBridge.openInVlc(url,item.title||'',!!item.isLive,startMs||0); return; }catch{}
+  }
+  window.location.href=url;
+}
+
+function playPanelEp(idx){
+  const ep=S.panelEps[idx]; if(!ep?.url) return;
+  const item=S.panelItem;
+  const code=`S${String(S.panelSelSeason).padStart(2,'0')}E${String(ep.episode_num).padStart(2,'0')}`;
+  const pk=`${item.series_id}||${code}`;
+  const saved=getProg()[pk]; const pct=saved?.pct||0; const t=saved?.t||0;
+  if(pct>10&&pct<92){
+    S.resumeEpIdx=idx; S.resumeStartMs=t*1000; S.resumeBtn=0;
+    S.lastProgKey=pk; S.lastProgItem=item;
+    $('resume-sub').textContent=`Reprise à ${Math.round(pct)}% — ${fmtTime(t)}`;
+    $('resume-modal').hidden=false; S.zone='resume'; focus();
+  } else doPlayEp(idx,0);
+}
+
+function doPlayEp(idx,startMs){
+  const ep=S.panelEps[idx]; if(!ep) return;
+  const item=S.panelItem;
+  const code=`S${String(S.panelSelSeason).padStart(2,'0')}E${String(ep.episode_num).padStart(2,'0')}`;
+  const pk=`${item.series_id}||${code}`;
+  S.lastProgKey=pk; S.lastProgItem=item; pushHist(item);
+  const url=(ep.url||'').replace(/^https?:\/\//i,'http://');
+  const title=`${item.title} — ${code}`;
+  if(window.AndroidBridge?.openInVlc){
+    try{ AndroidBridge.openInVlc(url,title,false,startMs||0); return; }catch{}
+  }
+  window.location.href=url;
+}
+
+// VLC callback
+window.onAndroidPlayerClosed=function(url,posMs,durMs){
+  if(!posMs||posMs<1000) return;
+  const key=S.lastProgKey; const item=S.lastProgItem; if(!key) return;
+  const pct=(durMs&&durMs>0)?Math.min(100,(posMs/durMs)*100):1;
+  if(pct>1){
+    saveProg(key,{pct,t:Math.round(posMs/1000),d:Math.round(durMs/1000),ts:Date.now()});
+    document.querySelectorAll(`.card[data-prog-key="${CSS.escape(key)}"]`).forEach(c=>{
+      let pb=c.querySelector('.cprog');
+      if(!pb){
+        pb=document.createElement('div'); pb.className='cprog';
+        const pf=document.createElement('div'); pf.className='cprog-fill'; pb.appendChild(pf);
+        c.querySelector('.card-wrap')?.appendChild(pb);
       }
-    } else { // eps
-      const cnt=S.panelEps.length||1;
-      if (dir==='u') {
-        if(S.panelEpIdx===0) S.panelZone=Object.keys(S.panelSmap).length?'tabs':'acts';
-        else S.panelEpIdx--;
-      }
-      else if (dir==='d') S.panelEpIdx=Math.min(cnt-1,S.panelEpIdx+1);
+      const pf=pb.querySelector('.cprog-fill'); if(pf) pf.style.width=Math.min(pct,100)+'%';
+    });
+  }
+  if(item) pushHist(item);
+};
+
+// ══════════════════════════════════════════════════
+//  SEARCH
+// ══════════════════════════════════════════════════
+function renderSearch(){
+  const q=$('sinput').value.trim().toLowerCase();
+  const res=$('search-results'); res.innerHTML='';
+  if(!q||q.length<2) return;
+  S.allItems.filter(i=>isClean(i)&&(i.title||'').toLowerCase().includes(q))
+    .slice(0,80).forEach((item,idx)=>{ const c=mkCard(item,-2,idx,item.isLive); res.appendChild(c); });
+}
+
+// ══════════════════════════════════════════════════
+//  SECTION NAVIGATION
+// ══════════════════════════════════════════════════
+function gotoSection(sec){
+  S.sec=sec;
+  qAll('.ni').forEach(el=>el.classList.toggle('active',el.dataset.s===sec));
+  qAll('.view').forEach(v=>v.hidden=true);
+  if(sec==='home'){
+    $('home-view').hidden=false; S.zone='hero'; S.hBtn=0;
+  } else if(sec==='search'){
+    $('search-view').hidden=false; S.zone='search';
+    setTimeout(()=>$('sinput').focus(),50);
+  } else if(sec==='movies'){
+    $('grid-view').hidden=false;
+    renderGrid(S.allVod.filter(isClean),false,'Films');
+    S.zone=S.filterPills.length?'filter':'grid';
+  } else if(sec==='shows'){
+    $('grid-view').hidden=false;
+    renderGrid(S.allSeries.filter(isClean),false,'Séries');
+    S.zone=S.filterPills.length?'filter':'grid';
+  } else if(sec==='live'){
+    $('grid-view').hidden=false;
+    renderGrid(S.liveItems,true,'TV en Direct');
+    S.zone=S.filterPills.length?'filter':'grid';
+  } else if(sec==='settings'){
+    $('settings-view').hidden=false; S.zone='settings'; S.setIdx=0;
+    const ver=window.AndroidBridge?.getApkVersion?.();
+    const el=$('apk-ver'); if(el&&ver) el.textContent=ver;
+  }
+  focus();
+}
+
+// ══════════════════════════════════════════════════
+//  FOCUS
+// ══════════════════════════════════════════════════
+function focus(){
+  qAll('.foc').forEach(el=>el.classList.remove('foc'));
+  const z=S.zone;
+  if(z==='nav'){
+    qAll('.ni')[S.navIdx]?.classList.add('foc');
+  } else if(z==='hero'){
+    qAll('.btn-hero')[S.hBtn]?.classList.add('foc');
+  } else if(z==='row'){
+    const cards=document.querySelectorAll(`#ri${S.rowIdx} .card`);
+    const card=cards[S.cardIdx];
+    if(card){ card.classList.add('foc'); card.scrollIntoView({block:'nearest',inline:'nearest'}); }
+    document.querySelector(`.row[data-ri="${S.rowIdx}"]`)?.scrollIntoView({block:'nearest'});
+  } else if(z==='filter'){
+    const pills=qAll('.fpill'); pills[S.filterIdx]?.classList.add('foc');
+    pills[S.filterIdx]?.scrollIntoView({block:'nearest',inline:'nearest'});
+  } else if(z==='grid'){
+    const cards=qAll('#grid-wrap .card'); const card=cards[S.gridIdx];
+    if(card){ card.classList.add('foc'); card.scrollIntoView({block:'nearest'}); }
+  } else if(z==='panel-acts'){
+    qAll('.panel-act-btn')[S.panelActIdx]?.classList.add('foc');
+  } else if(z==='panel-tabs'){
+    qAll('.panel-tab')[S.panelTabIdx]?.classList.add('foc');
+  } else if(z==='panel-eps'){
+    const ep=qAll('.pep')[S.panelEpIdx];
+    if(ep){ ep.classList.add('foc'); ep.scrollIntoView({block:'nearest'}); }
+  } else if(z==='settings'){
+    qAll('.set-item')[S.setIdx]?.classList.add('foc');
+  } else if(z==='resume'){
+    qAll('.resume-btn')[S.resumeBtn]?.classList.add('foc');
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  D-PAD HANDLER
+// ══════════════════════════════════════════════════
+function handleKey(dir){
+  const z=S.zone;
+
+  if(z==='resume'){
+    if(dir==='l') S.resumeBtn=0;
+    else if(dir==='r') S.resumeBtn=1;
+    else if(dir==='e'){
+      $('resume-modal').hidden=true;
+      if(S.resumeBtn===0) doPlayEp(S.resumeEpIdx,S.resumeStartMs);
+      else doPlayEp(S.resumeEpIdx,0);
+      S.zone='panel-eps';
     }
-    focusPanel(); return;
-  }
-
-  if (z==='filter') {
-    const pills = qAll('.fpill');
-    const cnt = pills.length;
-    if (dir==='u') { S.zone='nav'; S.navIdx=Math.max(0,NAV_ITEMS.indexOf(S.sec)); }
-    else if (dir==='d') { S.zone='grid'; S.gridIdx=0; }
-    else if (dir==='l') S.filterIdx = Math.max(0, S.filterIdx-1);
-    else if (dir==='r') S.filterIdx = Math.min(cnt-1, S.filterIdx+1);
+    else if(dir==='b'){ $('resume-modal').hidden=true; S.zone='panel-eps'; }
     focus(); return;
   }
 
-  if (z==='nav') {
-    if (dir==='l') { S.navIdx=Math.max(0,S.navIdx-1); previewSection(NAV_ITEMS[S.navIdx]); }
-    else if (dir==='r') { S.navIdx=Math.min(NAV_ITEMS.length-1,S.navIdx+1); previewSection(NAV_ITEMS[S.navIdx]); }
-    else if (dir==='d') {
-      const sec=S.sec;
-      if (sec==='home') { S.zone='hero'; S.hBtn=0; }
-      else if (sec==='movies'||sec==='shows'||sec==='live') {
-        const fb = $('filter-bar');
-        if (fb && fb.querySelectorAll('.fpill').length > 0) { S.zone='filter'; S.filterIdx=0; }
-        else { S.zone='grid'; S.gridIdx=0; }
-      }
-      else if (sec==='search')   { S.zone='search'; }
-      else if (sec==='settings') { S.zone='settings'; S.setIdx=0; }
+  if(z==='panel-acts'){
+    const hasTabs=qAll('.panel-tab').length>0;
+    const hasEps=S.panelEps.length>0;
+    if(dir==='l') S.panelActIdx=Math.max(0,S.panelActIdx-1);
+    else if(dir==='r') S.panelActIdx=Math.min(1,S.panelActIdx+1);
+    else if(dir==='d'){ if(hasTabs){S.zone='panel-tabs';S.panelTabIdx=0;} else if(hasEps){S.zone='panel-eps';S.panelEpIdx=0;} }
+    else if(dir==='e'){
+      if(S.panelActIdx===0){ if(S.panelIsVod) playItem(S.panelItem); else if(S.panelEps.length) playPanelEp(0); }
+      else{ toggleFav(S.panelItem); updatePanelFavBtn(); }
     }
+    else if(dir==='b') closePanel();
     focus(); return;
   }
 
-  if (z==='hero') {
-    if (dir==='u') { S.zone='nav'; S.navIdx=NAV_ITEMS.indexOf(S.sec)||0; }
-    else if (dir==='l') S.hBtn=Math.max(0,S.hBtn-1);
-    else if (dir==='r') S.hBtn=Math.min(1,S.hBtn+1);
-    else if (dir==='d') { S.zone='row'; S.rowIdx=0; S.cardIdx=0; }
+  if(z==='panel-tabs'){
+    const tabs=qAll('.panel-tab'); const hasEps=S.panelEps.length>0;
+    if(dir==='l') S.panelTabIdx=Math.max(0,S.panelTabIdx-1);
+    else if(dir==='r') S.panelTabIdx=Math.min(tabs.length-1,S.panelTabIdx+1);
+    else if(dir==='u') S.zone='panel-acts';
+    else if(dir==='d'){ if(hasEps){S.zone='panel-eps';S.panelEpIdx=0;} }
+    else if(dir==='e'){
+      const tab=tabs[S.panelTabIdx]; if(tab){ S.panelSelSeason=tab.dataset.season; renderPanelTabs(); renderPanelEps(); }
+    }
+    else if(dir==='b') S.zone='panel-acts';
     focus(); return;
   }
 
-  if (z==='row') {
+  if(z==='panel-eps'){
+    const cnt=S.panelEps.length; const hasTabs=qAll('.panel-tab').length>0;
+    if(dir==='u'){ if(S.panelEpIdx===0) S.zone=hasTabs?'panel-tabs':'panel-acts'; else S.panelEpIdx--; }
+    else if(dir==='d'){ if(S.panelEpIdx<cnt-1) S.panelEpIdx++; }
+    else if(dir==='e') playPanelEp(S.panelEpIdx);
+    else if(dir==='b') S.zone=hasTabs?'panel-tabs':'panel-acts';
+    focus(); return;
+  }
+
+  if(z==='nav'){
+    const nis=qAll('.ni');
+    if(dir==='l') S.navIdx=Math.max(0,S.navIdx-1);
+    else if(dir==='r') S.navIdx=Math.min(nis.length-1,S.navIdx+1);
+    else if(dir==='d'){
+      if(S.sec==='home'){S.zone='hero';S.hBtn=0;}
+      else if(S.sec==='search') S.zone='search';
+      else if(S.sec==='settings'){S.zone='settings';S.setIdx=0;}
+      else{S.zone=qAll('.fpill').length?'filter':'grid';S.filterIdx=0;S.gridIdx=0;}
+    }
+    else if(dir==='e'){ const ni=nis[S.navIdx]; if(ni) gotoSection(ni.dataset.s); }
+    focus(); return;
+  }
+
+  if(z==='hero'){
+    if(dir==='u'){S.zone='nav';S.navIdx=Math.max(0,NAV_KEYS.indexOf(S.sec));}
+    else if(dir==='d'){S.zone='row';S.rowIdx=0;S.cardIdx=0;}
+    else if(dir==='l') S.hBtn=Math.max(0,S.hBtn-1);
+    else if(dir==='r') S.hBtn=Math.min(1,S.hBtn+1);
+    else if(dir==='e'){ if(S.heroItem){ if(S.hBtn===0) playItem(S.heroItem); else openPanel(S.heroItem); } }
+    focus(); return;
+  }
+
+  if(z==='row'){
     const rowEl=document.querySelector(`#ri${S.rowIdx}`);
     const cnt=rowEl?rowEl.querySelectorAll('.card').length:0;
-    if (dir==='u') {
-      if (S.rowIdx===0) {
-        // Retour au hero (section home) ou nav (autres sections)
-        if (S.sec==='home') { S.zone='hero'; S.hBtn=0; }
-        else { S.zone='nav'; S.navIdx=Math.max(0,NAV_ITEMS.indexOf(S.sec)); }
-      } else { S.rowIdx--; S.cardIdx=0; }
-    } else if (dir==='d') {
-      if (S.rowIdx<S.rows.length-1) { S.rowIdx++; S.cardIdx=0; }
-    } else if (dir==='l') {
-      if (S.cardIdx>0) S.cardIdx--;
-    } else if (dir==='r') {
-      S.cardIdx=Math.min(cnt-1,S.cardIdx+1);
-    }
+    if(dir==='u'){ if(S.rowIdx===0){S.zone='hero';S.hBtn=0;} else{S.rowIdx--;S.cardIdx=0;} }
+    else if(dir==='d'){ if(S.rowIdx<S.rows.length-1){S.rowIdx++;S.cardIdx=0;} }
+    else if(dir==='l'){ if(S.cardIdx>0) S.cardIdx--; }
+    else if(dir==='r'){ if(S.cardIdx<cnt-1) S.cardIdx++; }
+    else if(dir==='e'){ const row=S.rows[S.rowIdx]; if(row) openItem(row.items[S.cardIdx]); }
+    else if(dir==='b'){S.zone='hero';S.hBtn=0;}
     focus(); return;
   }
 
-  if (z==='grid') {
-    const cols=Math.max(1,Math.round(($('grid-wrap').offsetWidth+10)/(90+10)))||10;
-    const cnt=$('grid-wrap').querySelectorAll('.card').length;
-    if (dir==='u') {
-      if (S.gridIdx<cols) {
-        const fb = $('filter-bar');
-        if (fb && fb.querySelectorAll('.fpill').length > 0) { S.zone='filter'; S.filterIdx=0; }
-        else { S.zone='nav'; S.navIdx=Math.max(0,NAV_ITEMS.indexOf(S.sec)); }
-      }
+  if(z==='filter'){
+    if(dir==='u'){S.zone='nav';S.navIdx=Math.max(0,NAV_KEYS.indexOf(S.sec));}
+    else if(dir==='d'){S.zone='grid';S.gridIdx=0;}
+    else if(dir==='l'){
+      let i=S.filterIdx-1;
+      while(i>=0&&S.filterPills[i]?.type==='sep') i--;
+      if(i>=0) S.filterIdx=i;
+    }
+    else if(dir==='r'){
+      let i=S.filterIdx+1;
+      while(i<S.filterPills.length&&S.filterPills[i]?.type==='sep') i++;
+      if(i<S.filterPills.length) S.filterIdx=i;
+    }
+    else if(dir==='e') activateFilter(S.filterIdx);
+    else if(dir==='b'){S.zone='nav';S.navIdx=Math.max(0,NAV_KEYS.indexOf(S.sec));}
+    focus(); return;
+  }
+
+  if(z==='grid'){
+    const cnt=qAll('#grid-wrap .card').length;
+    const cols=Math.max(1,Math.floor(($('grid-wrap').offsetWidth||1824)/110));
+    if(dir==='u'){
+      if(S.gridIdx<cols){ S.zone=qAll('.fpill').length?'filter':'nav'; S.filterIdx=0; if(S.zone==='nav') S.navIdx=Math.max(0,NAV_KEYS.indexOf(S.sec)); }
       else S.gridIdx=Math.max(0,S.gridIdx-cols);
     }
-    else if (dir==='d') S.gridIdx=Math.min(cnt-1,S.gridIdx+cols);
-    else if (dir==='l') S.gridIdx=Math.max(0,S.gridIdx-1);
-    else if (dir==='r') S.gridIdx=Math.min(cnt-1,S.gridIdx+1);
+    else if(dir==='d'){ if(S.gridIdx+cols<cnt) S.gridIdx+=cols; }
+    else if(dir==='l'){ if(S.gridIdx>0) S.gridIdx--; }
+    else if(dir==='r'){ if(S.gridIdx<cnt-1) S.gridIdx++; }
+    else if(dir==='e'){ const item=S.gridItems[S.gridIdx]; if(item) openItem(item); }
+    else if(dir==='b'){ S.zone=qAll('.fpill').length?'filter':'nav'; if(S.zone==='nav') S.navIdx=Math.max(0,NAV_KEYS.indexOf(S.sec)); }
     focus(); return;
   }
 
-  if (z==='settings') {
-    if (dir==='u') {
-      if (S.setIdx===0) { S.zone='nav'; S.navIdx=NAV_ITEMS.indexOf('settings'); }
-      else S.setIdx=Math.max(0,S.setIdx-1);
-    }
-    else if (dir==='d') S.setIdx=Math.min(SET_ROWS.length-1,S.setIdx+1);
+  if(z==='search'){
+    if(dir==='u'||dir==='b'){S.zone='nav';S.navIdx=1;}
     focus(); return;
   }
 
-  if (z==='search') {
-    if (dir==='u') { S.zone='nav'; S.navIdx=NAV_ITEMS.indexOf('search'); focus(); }
-    return;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  SELECT
-// ═══════════════════════════════════════════════════════════════════
-function activateItem(item) {
-  if (!item) return;
-  if (item.isLive) {
-    if (item._variants && item._variants.length > 1) openLivePicker(item);
-    else playItem(item._variants?.[0]?.item || item);
-  } else if (item.series_id) {
-    openPanel(item);
-  } else {
-    openVodPanel(item);
-  }
-}
-
-function select() {
-  if (S._forceUpdateActive) { startForceInstall(); return; }
-  const z=S.zone;
-  if (z==='resume') {
-    if (S._resumeModalBtnIdx === 0) $('resume-continue')?.click();
-    else $('resume-restart')?.click();
-    return;
-  }
-  if (z==='filter') {
-    qAll('.fpill')[S.filterIdx]?.click();
-    return;
-  }
-  if (z==='panel') {
-    if(S.panelZone==='acts'){
-      const btns=$('seriesPanel')?.querySelectorAll('.spp-acts .spp-btn');
-      btns?.[S.panelActIdx]?.click();
-    } else if(S.panelZone==='eps'){
-      const visibleEps=$('seriesPanel')?.querySelectorAll('.spp-ep:not([disabled])');
-      visibleEps?.[S.panelEpIdx]?.click();
-    }
-    return;
-  }
-  if (z==='nav') { gotoSection(NAV_ITEMS[S.navIdx]); return; }
-  if (z==='hero') {
-    if (S.hBtn===0 && S.heroItem) playItem(S.heroItem);
-    else if (S.hBtn===1 && S.heroItem) activateItem(S.heroItem);
-    return;
-  }
-  if (z==='row') {
-    const row = S.rows[S.rowIdx];
-    const item = row?.items[S.cardIdx];
-    if (!item) {
-      // Carte "Voir tout" (index au-delà des items réels)
-      _gotoRowAll(row);
-      return;
-    }
-    activateItem(item);
-    return;
-  }
-  if (z==='grid') {
-    const item=S.gridItems[S.gridIdx];
-    activateItem(item);
-    return;
-  }
-  // zone 'det' supprimée — les épisodes passent par le panneau series
-  if (z==='settings') {
-    const r=SET_ROWS[S.setIdx];
-    if (r==='set-reload') { $('loading').style.display='flex'; loadContent(); }
-    else if (r==='set-cache') { if(window.AndroidBridge) AndroidBridge.reloadApp(); else location.reload(); }
-    else if (r==='set-update') {
-      if (S._updateUrl && window.AndroidBridge?.downloadAndInstall) {
-        $('update-val').textContent = 'Téléchargement en cours…';
-        AndroidBridge.downloadAndInstall(S._updateUrl);
-      } else {
-        checkForUpdate();
-      }
-    }
-    return;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  BACK
-// ═══════════════════════════════════════════════════════════════════
-function back() {
-  if (S._forceUpdateActive) return;
-  if (S.zone === 'resume') { _closeResumeModal(); return; }
-  if (S.panelOpen) { closePanel(); return; }
-
-  const z = S.zone;
-
-  // Depuis la nav → retour système (ne rien faire, Android gère l'exit)
-  if (z === 'nav') return;
-
-  // Depuis n'importe quelle zone de contenu → toujours revenir à la nav
-  S.zone  = 'nav';
-  S.navIdx = Math.max(0, NAV_ITEMS.indexOf(S.sec));
-  focus();
-}
-
-function toggleNav() {
-  if (S.zone==='nav') { S.zone = S.sec==='home' ? 'hero' : 'grid'; focus(); }
-  else { S.zone='nav'; S.navIdx=Math.max(0,NAV_ITEMS.indexOf(S.sec)); focus(); }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  SECTION PREVIEW (nav L/R — affiche le contenu sans changer de zone)
-// ═══════════════════════════════════════════════════════════════════
-function previewSection(sec) {
-  S.sec = sec;
-  qAll('.ni').forEach(el => el.classList.toggle('active', el.dataset.s === sec));
-  $('home-view').style.display     = sec === 'home'                                   ? 'flex' : 'none';
-  $('grid-view').style.display     = (sec==='movies'||sec==='shows'||sec==='live')    ? 'flex' : 'none';
-  $('search-view').style.display   = sec === 'search'                                 ? 'flex' : 'none';
-  $('settings-view').style.display = sec === 'settings'                               ? 'flex' : 'none';
-  if      (sec === 'movies') renderGrid(S.allVod    || S.allItems.filter(i => !i.series_id && !i.isLive), false);
-  else if (sec === 'shows')  renderGrid(S.allSeries || S.allItems.filter(i =>  i.series_id),              false);
-  else if (sec === 'live')   renderGrid(groupLiveItems(S.liveItems), true);
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  SECTION SWITCH
-// ═══════════════════════════════════════════════════════════════════
-function gotoSection(sec) {
-  S.sec=sec;
-
-  qAll('.ni').forEach(el=>el.classList.toggle('active',el.dataset.s===sec));
-
-  $('home-view').style.display='none';
-  $('grid-view').style.display='none';
-  $('search-view').style.display='none';
-  $('settings-view').style.display='none';
-
-  if (sec==='home') {
-    $('home-view').style.display='flex';
-    S.zone='hero'; S.hBtn=0;
+  if(z==='settings'){
+    const cnt=qAll('.set-item').length;
+    if(dir==='u'){ if(S.setIdx===0){S.zone='nav';S.navIdx=NAV_KEYS.indexOf('settings');} else S.setIdx--; }
+    else if(dir==='d'){ if(S.setIdx<cnt-1) S.setIdx++; }
+    else if(dir==='e') activateSetting(S.setIdx);
+    else if(dir==='b'){S.zone='nav';S.navIdx=NAV_KEYS.indexOf('settings');}
     focus(); return;
   }
-  if (sec==='search') {
-    $('search-view').style.display='flex';
-    S.zone='search'; focus(); return;
-  }
-  if (sec==='settings') {
-    $('settings-view').style.display='flex';
-    S.zone='settings'; S.setIdx=0;
-    const ver = window.AndroidBridge?.getApkVersion?.() || '?';
-    $('about-val').textContent = `Google TV Perso v${ver}`;
-    checkForUpdate();
-    focus(); return;
-  }
-
-  $('grid-view').style.display='flex';
-  S.zone='grid'; S.gridIdx=0;
-
-  if (sec === 'movies') {
-    renderGrid(S.allVod || S.allItems.filter(i => !i.series_id && !i.isLive), false);
-  } else if (sec === 'shows') {
-    renderGrid(S.allSeries || S.allItems.filter(i => i.series_id), false);
-  } else if (sec === 'live') {
-    renderGrid(groupLiveItems(S.liveItems), true);
-  }
-  focus();
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  PLAY
-// ═══════════════════════════════════════════════════════════════════
-function playItem(item) {
-  if (!item) return;
-  pushHist(item);
-
-  // Live : URL directe ou construite depuis stream_id
-  if (item.isLive) {
-    const url = item.url
-      || (item.stream_id ? `http://goldenlink.live/live/${U}/${P}/${item.stream_id}.ts` : '');
-    if (url) { openVlc(url, item.title, true, item); return; }
-  }
-
-  // VOD : URL directe ou construite depuis stream_id
-  if (!item.series_id) {
-    const url = (item.url && !item.url.includes('player_api'))
-      ? item.url
-      : item.stream_id ? `http://goldenlink.live/movie/${U}/${P}/${item.stream_id}.mkv` : '';
-    if (url) {
-      // Track pour onAndroidPlayerClosed
-      if (item.stream_id) { S._lastProgKey = 'vid_' + item.stream_id; S._lastProgItem = item; }
-      openVlc(url, item.title, false, item); return;
-    }
-  }
-
-  // Série sans URL directe → panneau épisodes
-  if (item.series_id) { openPanel(item); return; }
+// ══════════════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════════════
+function activateSetting(idx){
+  const id=qAll('.set-item')[idx]?.dataset.id; if(!id) return;
+  if(id==='cache'){ if(window.AndroidBridge) AndroidBridge.reloadApp(); else location.reload(); }
+  else if(id==='update') checkUpdate();
+  else if(id==='clear-hist'){ storeSet(STORE.hist,[]); alert('Historique effacé.'); }
+}
+async function checkUpdate(){
+  try{
+    const data=await loadJSON(GH+'update.json'); if(!data){alert('Aucune mise à jour disponible.');return;}
+    const v=window.AndroidBridge?.getApkVersion?.();
+    if(data.version&&data.version!==v){ alert(`Nouvelle version : ${data.version}\n${data.notes||''}`); if(data.url&&window.AndroidBridge?.downloadAndInstall) AndroidBridge.downloadAndInstall(data.url); }
+    else alert('Application à jour.');
+  }catch{alert('Erreur lors de la vérification.');}
 }
 
-function openVlc(url, title, isLive, itemRef) {
-  const httpUrl = url.replace(/^https?:\/\//i, 'http://');
-  // Android TV APK : appel direct AndroidBridge (1 seul BACK)
-  if (window.AndroidBridge?.openInVlc) {
-    try { AndroidBridge.openInVlc(httpUrl, title || '', isLive || false); return; } catch (e) {}
-  }
-  // Fallback navigateur : player.html
-  const playerItem = {
-    title        : title || 'Lecture',
-    stream_url   : httpUrl,
-    url          : httpUrl,
-    type         : isLive ? 'live' : (itemRef?.series_id ? 'series' : 'vod'),
-    plot         : itemRef?.plot || '',
-    category     : itemRef?.category || '',
-    category_name: itemRef?.category || '',
-    isLive       : isLive || false,
-    series_id    : itemRef?.series_id || null,
-    stream_id    : itemRef?.stream_id || null,
-    image        : itemRef?.image || '',
-  };
-  sessionStorage.setItem('iptv_current_item', JSON.stringify(playerItem));
-  window.location.href = 'player.html';
-}
+// ══════════════════════════════════════════════════
+//  KEY EVENTS
+// ══════════════════════════════════════════════════
+const KEY_MAP={ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r',Enter:'e',' ':'e',Escape:'b',Backspace:'b',Back:'b'};
 
-// (Le panneau #det n'est plus utilisé — les séries passent par #seriesPanel via openPanel)
-
-// ═══════════════════════════════════════════════════════════════════
-//  VLC CALLBACK — appelé par AndroidBridge quand VLC se ferme
-// ═══════════════════════════════════════════════════════════════════
-window.onAndroidPlayerClosed = function(url, posMs, durMs) {
-  // durMs peut être 0 si VLC n'a pas pu détecter la durée
-  if (!posMs || posMs < 1000) return;
-  const key  = S._lastProgKey;
-  const item = S._lastProgItem;
-  if (!key) return;
-
-  let pct;
-  if (durMs && durMs > 0) {
-    pct = Math.min(100, (posMs / durMs) * 100);
-  } else {
-    // Durée inconnue — on conserve la position en ms pour afficher un minimum
-    pct = 1; // juste marquer comme "démarré"
-  }
-
-  if (pct > 1) {
-    // Sauvegarder pct + position en secondes (pour le modal Reprendre)
-    const prog = getProg();
-    prog[key] = { pct, t: Math.round(posMs / 1000), d: Math.round(durMs / 1000), ts: Date.now() };
-    storeSet(STORE.progress, prog);
-    _cacheP = prog;
-    _refreshCardProgress(key, pct);
-  }
-
-  // Repousser l'historique (au cas où la session a été longue)
-  if (item) pushHist(item);
-
-  // Rafraîchir la ligne "Continuer à regarder" si on est sur l'accueil
-  if (S.sec === 'home' && S.rows?.length) {
-    const histItems = getHist().slice(0, 15).map(h => h.item).filter(Boolean);
-    if (histItems.length) {
-      const existing = S.rows.findIndex(r => r.title?.startsWith('▶'));
-      if (existing >= 0) { S.rows[existing].items = histItems; }
-      else { S.rows.unshift({ title: '▶ Continuer à regarder', items: histItems }); }
-      renderRows(S.rows);
-    }
-  }
-};
-
-// ═══════════════════════════════════════════════════════════════════
-//  LIVE — Quality grouping
-// ═══════════════════════════════════════════════════════════════════
-const _QUAL_ORDER = ['4K','UHD','FHD','HD','HEVC','SD'];
-const _QUAL_RE    = /[\s\[\(]+(SD|HD|FHD|UHD|4K|8K|HEVC|H\.?265|H\.?264|1080p?|720p?|2160p?)\b\]?\)?/gi;
-function _parseLQ(title){
-  if(!title) return null;
-  const ms=[...title.matchAll(_QUAL_RE)].map(m=>m[1].toUpperCase());
-  for(const q of _QUAL_ORDER) if(ms.includes(q)) return q;
-  return ms[0]||null;
-}
-function _baseLN(title){ return title ? title.replace(_QUAL_RE,'').replace(/\s+/g,' ').trim() : ''; }
-
-function groupLiveItems(items){
-  const groups=new Map();
-  items.forEach(item=>{
-    const base=_baseLN(item.title)||item.title;
-    const qual=_parseLQ(item.title);
-    if(!groups.has(base)){
-      groups.set(base,{...item,title:base,isLive:true,_variants:[],_iconRank:999});
-    }
-    const g=groups.get(base);
-    g._variants.push({quality:qual||'Auto',item});
-    const rank=qual?_QUAL_ORDER.indexOf(qual):99;
-    if(rank>=0&&rank<g._iconRank&&item.image){g.image=item.image;g._iconRank=rank;}
-  });
-  groups.forEach(g=>{
-    g._variants.sort((a,b)=>{
-      const ra=_QUAL_ORDER.indexOf(a.quality); const rb=_QUAL_ORDER.indexOf(b.quality);
-      return (ra<0?99:ra)-(rb<0?99:rb);
-    });
-  });
-  return [...groups.values()];
-}
-
-function openLivePicker(group){
-  if($('livePicker')) return;
-  const ov=document.createElement('div');
-  ov.id='livePicker'; ov.className='live-picker';
-  ov.innerHTML=`<div class="live-picker__box">
-    <h2 class="live-picker__title">${esc(group.title)}</h2>
-    <div class="live-picker__sub">Choisissez la qualité</div>
-    <div class="live-picker__grid">
-      ${group._variants.map((v,i)=>`
-        <button class="live-picker__btn" data-idx="${i}" autofocus="${i===0}">
-          <span class="live-picker__qual">${esc(v.quality)}</span>
-          <span class="live-picker__hint">${esc(v.item.title)}</span>
-        </button>`).join('')}
-    </div>
-    <button class="live-picker__close" id="livePickerClose">✕ Fermer</button>
-  </div>`;
-  document.body.appendChild(ov);
-  setTimeout(()=>ov.querySelector('.live-picker__btn')?.focus(),50);
-  const close=()=>ov.remove();
-  ov.querySelectorAll('.live-picker__btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{ close(); playItem(group._variants[Number(btn.dataset.idx)].item); });
-  });
-  $('livePickerClose').addEventListener('click',close);
-  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
-  ov.addEventListener('keydown',e=>{
-    if(e.key==='Escape'||e.key==='GoBack'||e.key==='Back'){ e.preventDefault(); close(); }
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  ESC helper
-// ═══════════════════════════════════════════════════════════════════
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-// ═══════════════════════════════════════════════════════════════════
-//  VOD PANEL  (film — synopsis + bouton lecture)
-// ═══════════════════════════════════════════════════════════════════
-function openVodPanel(item) {
-  S.panelOpen   = true;
-  S.panelItem   = item;
-  S.panelIsVod  = true;
-  S.panelZone   = 'acts';
-  S.panelActIdx = 0;
-  S.prevZone    = S.zone;
-  S.zone        = 'panel';
-
-  const cover = item.image || '';
-  const fav   = isFav(item);
-  const meta  = [item.category, item.quality].filter(Boolean).join(' · ');
-
-  $('seriesPanel').innerHTML = `
-    <div class="spp-wrap">
-      <div class="spp-left">
-        <div class="spp-aura" style="background-image:url('${esc(cover)}')"></div>
-        <button class="spp-close" id="spClose">✕</button>
-        <div class="spp-lc">
-          ${cover
-            ? `<img class="spp-cover" src="${esc(cover)}" alt="" loading="lazy" onerror="this.style.display='none'">`
-            : `<div class="spp-nocover">🎬</div>`}
-          <div class="spp-kicker">Film</div>
-          <h3 class="spp-title">${esc(item.title)}</h3>
-          ${meta ? `<div class="spp-meta">${esc(meta)}</div>` : ''}
-          <p class="spp-plot" id="spPlot">${esc(item.plot || 'Chargement du synopsis…')}</p>
-          <div class="spp-acts" id="spActs">
-            <button class="spp-btn spp-btn-w" id="spPlayBtn">▶ Lecture</button>
-            <button class="spp-btn spp-btn-g${fav ? ' is-fav' : ''}" id="spFavBtn">
-              <span class="fhrt">${fav ? '♥' : '♡'}</span>
-              <span id="spFavLbl">${fav ? 'Favori' : 'Ajouter'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      <div class="spp-right" id="spRight"></div>
-    </div>`;
-
-  $('seriesPanel').classList.add('on');
-  $('spClose').addEventListener('click', closePanel);
-  $('spPlayBtn').addEventListener('click', () => { closePanel(); playItem(item); });
-  $('spFavBtn').addEventListener('click', () => { updatePanelFav(item); });
-  focusPanel();
-
-  // Lazy-load synopsis si absent
-  if (!item.plot) {
-    fetchVodPlot(item).then(p => {
-      const el = $('spPlot');
-      if (el) el.textContent = p || 'Aucun synopsis disponible.';
-      if (p) item.plot = p;
-    });
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  SERIES PANEL  (chargement épisodes depuis epDb / API)
-// ═══════════════════════════════════════════════════════════════════
-function openPanel(item) {
-  S.panelOpen      = true;
-  S.panelItem      = item;
-  S.panelIsVod     = false;
-  S.panelZone      = 'acts';
-  S.panelActIdx    = 0;
-  S.panelTabIdx    = 0;
-  S.panelEpIdx     = 0;
-  S.panelSmap      = {};
-  S.panelSmeta     = [];
-  S.panelSelSeason = null;
-  S.panelEps       = [];
-  S.prevZone       = S.zone;
-  S.zone           = 'panel';
-
-  const cover = item.image || '';
-  const fav   = isFav(item);
-
-  $('seriesPanel').innerHTML = `
-    <div class="spp-wrap">
-      <div class="spp-left">
-        <div class="spp-aura" style="background-image:url('${esc(cover)}')"></div>
-        <button class="spp-close" id="spClose">✕</button>
-        <div class="spp-lc">
-          ${cover
-            ? `<img class="spp-cover" src="${esc(cover)}" alt="" loading="lazy" onerror="this.style.display='none'">`
-            : `<div class="spp-nocover">📺</div>`}
-          <div class="spp-kicker">Série</div>
-          <h3 class="spp-title">${esc(item.title)}</h3>
-          ${item.category ? `<div class="spp-meta">${esc(item.category)}</div>` : ''}
-          <p class="spp-plot" id="spPlot">${esc(item.plot || '')}</p>
-          <div class="spp-acts" id="spActs">
-            <button class="spp-btn spp-btn-g${fav ? ' is-fav' : ''}" id="spFavBtn">
-              <span class="fhrt">${fav ? '♥' : '♡'}</span>
-              <span id="spFavLbl">${fav ? 'Favori' : 'Ajouter'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      <div class="spp-right" id="spRight">
-        <div class="spp-loading"><div class="spp-spin"></div> Chargement des épisodes…</div>
-      </div>
-    </div>`;
-
-  $('seriesPanel').classList.add('on');
-  $('spClose').addEventListener('click', closePanel);
-  $('spFavBtn').addEventListener('click', () => { updatePanelFav(item); });
-  focusPanel();
-
-  loadEpisodes(item).then(({ seasonsMap, seasonsMeta, directOnly }) => {
-    S.panelSmap      = seasonsMap;
-    S.panelSmeta     = seasonsMeta;
-    S.panelDirectOnly = directOnly || false;
-    // Update plot if enriched by loadEpisodes
-    const plotEl = $('spPlot');
-    if (plotEl && item.plot && !plotEl.textContent) plotEl.textContent = item.plot;
-    renderPanelFull();
-  });
-}
-
-function closePanel() {
-  S.panelOpen = false;
-  $('seriesPanel').classList.remove('on');
-  S.zone = S.prevZone || (S.sec === 'home' ? 'hero' : 'grid');
-  focus();
-}
-
-function updatePanelFav(item) {
-  const isnow = toggleFav(item);
-  const btn   = $('spFavBtn');
-  if (!btn) return;
-  btn.classList.toggle('is-fav', isnow);
-  btn.querySelector('.fhrt').textContent = isnow ? '♥' : '♡';
-  const lbl = $('spFavLbl');
-  if (lbl) lbl.textContent = isnow ? 'Favori' : 'Ajouter';
-}
-
-function renderPanelFull() {
-  const item  = S.panelItem;
-  const smap  = S.panelSmap;
-  const smeta = S.panelSmeta;
-  const keys  = Object.keys(smap).sort((a, b) => Number(a) - Number(b));
-  S.panelSelSeason = keys[0] || null;
-  S.panelEps       = S.panelSelSeason ? smap[S.panelSelSeason] : [];
-
-  const right = $('spRight');
-  if (!right) return;
-
-  if (!keys.length) {
-    right.innerHTML = S.panelDirectOnly
-      ? `<div class="spp-noep">Épisodes non disponibles pour cette série.</div>`
-      : `<div class="spp-noep">Aucun épisode disponible.</div>`;
-    S.panelZone = 'acts';
-    focusPanel();
+document.addEventListener('keydown',e=>{
+  if(S.zone==='search'&&e.target===$('sinput')){
+    const d=KEY_MAP[e.key];
+    if(d==='e'){e.preventDefault();renderSearch();}
+    else if(d==='b'||d==='u'){e.preventDefault();handleKey(d);}
     return;
   }
-
-  const totalEps = Object.values(smap).reduce((n, a) => n + a.length, 0);
-
-  let tabsHtml = '';
-  if (keys.length > 1) {
-    tabsHtml = `<div class="spp-tabs">${keys.map((sk, i) => {
-      const m   = smeta.find(x => String(x.num) === sk);
-      const lbl = m ? m.name : `Saison ${sk}`;
-      const cnt = smap[sk]?.length || 0;
-      return `<button class="spp-tab${i === 0 ? ' active' : ''}" data-sk="${esc(sk)}">${esc(lbl)}<span class="spp-tab-cnt"> ${cnt} ép.</span></button>`;
-    }).join('')}</div>`;
-  } else {
-    const lbl = smeta[0]?.name || `Saison ${keys[0]}`;
-    tabsHtml = `<div class="spp-onesaison">${esc(lbl)} — ${totalEps} épisode${totalEps > 1 ? 's' : ''}</div>`;
-  }
-
-  right.innerHTML = `<div class="spp-rtitle">Épisodes</div>${tabsHtml}<div class="spp-eplist" id="spEpList"></div>`;
-
-  right.querySelectorAll('.spp-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const sk = btn.dataset.sk;
-      S.panelSelSeason = sk;
-      S.panelEps       = smap[sk] || [];
-      S.panelEpIdx     = 0;
-      S.panelZone      = 'eps';
-      right.querySelectorAll('.spp-tab').forEach(t => t.classList.toggle('active', t.dataset.sk === sk));
-      renderEpList();
-      focusPanel();
-    });
-  });
-
-  renderEpList();
-  S.panelZone = 'eps';
-  focusPanel();
-}
-
-function renderEpList() {
-  const list = $('spEpList');
-  if (!list) return;
-  const eps  = S.panelEps;
-  const item = S.panelItem;
-  if (!eps.length) { list.innerHTML = `<div class="spp-noep">Aucun épisode dans cette saison.</div>`; return; }
-  const sk = S.panelSelSeason || '1';
-
-  list.innerHTML = eps.map((ep, idx) => {
-    const code  = `S${String(sk).padStart(2, '0')}E${String(ep.episode_num).padStart(2, '0')}`;
-    const progK = `${item.series_id}||${code}`;
-    const pct   = getProg()[progK]?.pct || 0;
-    const done  = pct >= 90;
-    const hasUrl = !!ep.url;
-    return `<button class="spp-ep${done ? ' spp-ep--done' : ''}${!hasUrl ? ' spp-ep--disabled' : ''}"
-      data-idx="${idx}" ${!hasUrl ? 'disabled' : ''}>
-      ${ep.thumb
-        ? `<img class="spp-ep-img" src="${esc(ep.thumb)}" alt="" loading="lazy">`
-        : `<div class="spp-ep-img spp-ep-img--blank">🎬</div>`}
-      <div class="spp-ep-info">
-        <span class="spp-ep-code">${esc(code)}</span>
-        <span class="spp-ep-title">${esc(ep.title || 'Sans titre')}</span>
-        ${ep.duration ? `<span class="spp-ep-dur">${esc(ep.duration)}</span>` : ''}
-        ${ep.plot ? `<span class="spp-ep-dur">${esc(ep.plot.substring(0,100))}${ep.plot.length > 100 ? '…' : ''}</span>` : ''}
-      </div>
-      <div class="spp-ep-right">
-        ${done ? `<span class="spp-check">✓</span>` : pct > 2 ? `<span class="spp-pct">${Math.round(pct)}%</span>` : ''}
-        ${hasUrl ? `<span class="spp-play">▶</span>` : `<span class="spp-play" style="opacity:.3">–</span>`}
-      </div>
-    </button>
-    ${pct > 2 ? `<div class="spp-prog"><div class="spp-prog-fill" style="width:${Math.min(pct, 100)}%"></div></div>` : ''}`;
-  }).join('');
-
-  list.querySelectorAll('.spp-ep:not([disabled])').forEach(btn => {
-    btn.addEventListener('click', () => { playPanelEp(Number(btn.dataset.idx)); });
-  });
-}
-
-function playPanelEp(idx) {
-  const ep   = S.panelEps[idx];
-  if (!ep?.url) return;
-  const item = S.panelItem;
-  const sk   = S.panelSelSeason || '1';
-  const code = `S${String(sk).padStart(2, '0')}E${String(ep.episode_num).padStart(2, '0')}`;
-  const progKey  = `${item.series_id}||${code}`;
-  const savedPct = getProg()[progKey]?.pct || 0;
-  const savedT   = getProg()[progKey]?.t   || 0; // position en secondes
-
-  // Si > 10% et < 92% regardé → modal Reprendre/Recommencer
-  if (savedPct > 10 && savedPct < 92) {
-    _showResumeModal(idx, progKey, savedT);
-    return;
-  }
-
-  _doPlayPanelEp(idx, 0);
-}
-
-function _showResumeModal(epIdx, progKey, savedSec) {
-  S._resumeEpIdx   = epIdx;
-  S._resumeStartMs = savedSec * 1000;
-  S._resumeModalBtnIdx = 0;
-  const min = Math.floor(savedSec / 60);
-  const sec = String(Math.floor(savedSec % 60)).padStart(2, '0');
-  $('resume-sub').textContent = `Reprendre depuis ${min}:${sec} ou recommencer depuis le début ?`;
-  $('resumeModal').classList.add('on');
-  S.zone = 'resume';
-  _focusResumeModal();
-}
-
-function _focusResumeModal() {
-  [$('resume-continue'), $('resume-restart')].forEach((b, i) =>
-    b?.classList.toggle('foc', i === S._resumeModalBtnIdx));
-}
-
-function _closeResumeModal() {
-  $('resumeModal').classList.remove('on');
-  S.zone = 'panel';
-  focusPanel();
-}
-
-$('resume-continue').addEventListener('click', () => {
-  const idx = S._resumeEpIdx;
-  _closeResumeModal();
-  _doPlayPanelEp(idx, S._resumeStartMs);
-});
-$('resume-restart').addEventListener('click', () => {
-  const idx = S._resumeEpIdx;
-  _closeResumeModal();
-  _doPlayPanelEp(idx, 0);
+  const dir=KEY_MAP[e.key]; if(!dir) return;
+  if(e.target!==document.body&&e.target.tagName==='INPUT'&&dir!=='b') return;
+  e.preventDefault(); handleKey(dir);
 });
 
-function _doPlayPanelEp(idx, startMs) {
-  const ep   = S.panelEps[idx];
-  if (!ep?.url) return;
-  const item = S.panelItem;
-  const sk   = S.panelSelSeason || '1';
-  const code = `S${String(sk).padStart(2, '0')}E${String(ep.episode_num).padStart(2, '0')}`;
-  const httpUrl = ep.url.replace(/^https?:\/\//i, 'http://');
-  pushHist(item);
+$('sinput').addEventListener('input',()=>setTimeout(renderSearch,150));
 
-  // Track pour onAndroidPlayerClosed
-  S._lastProgKey  = `${item.series_id}||${code}`;
-  S._lastProgItem = item;
+// Panel events
+$('panel-btn-play').addEventListener('click',()=>{ if(S.panelIsVod) playItem(S.panelItem); else if(S.panelEps.length) playPanelEp(0); });
+$('panel-btn-fav').addEventListener('click',()=>{ toggleFav(S.panelItem); updatePanelFavBtn(); });
+$('panel-close').addEventListener('click',closePanel);
+$('btn-resume').addEventListener('click',()=>{ $('resume-modal').hidden=true; doPlayEp(S.resumeEpIdx,S.resumeStartMs); S.zone='panel-eps'; focus(); });
+$('btn-restart').addEventListener('click',()=>{ $('resume-modal').hidden=true; doPlayEp(S.resumeEpIdx,0); S.zone='panel-eps'; focus(); });
 
-  // Android TV APK : appel direct VLC (startMs = reprise depuis position sauvegardée)
-  if (window.AndroidBridge?.openInVlc) {
-    const epTitle = `${item.title} — ${code}${ep.title ? ' ' + ep.title : ''}`;
-    try { AndroidBridge.openInVlc(httpUrl, epTitle, false, startMs || 0); return; } catch (e) {}
-  }
-
-  // Fallback navigateur : player.html
-  const smap  = S.panelSmap;
-  const kkeys = Object.keys(smap).sort((a, b) => Number(a) - Number(b));
-  const allEps = [];
-  kkeys.forEach(s => (smap[s] || []).forEach(e => allEps.push({ season: s, ep: e })));
-  const curIdx = allEps.findIndex(x => x.season === sk && x.ep.episode_num === ep.episode_num);
-  const playerItem = {
-    type: 'series', series_id: item.series_id,
-    title: item.title, episode_label: code, episode_title: ep.title || '',
-    category: item.category || '', stream_icon: ep.thumb || item.image || '',
-    stream_url: httpUrl, url: httpUrl, plot: ep.plot || item.plot || '',
-    progress_key: `${item.series_id}||${code}`,
-    all_episodes: allEps.map(x => ({
-      season: x.season, episode_num: x.ep.episode_num, title: x.ep.title,
-      url: x.ep.url?.replace(/^https?:\/\//i, 'http://'),
-      thumb: x.ep.thumb, plot: x.ep.plot,
-      progress_key: `${item.series_id}||S${String(x.season).padStart(2, '0')}E${String(x.ep.episode_num).padStart(2, '0')}`
-    })),
-    current_ep_index: curIdx
-  };
-  sessionStorage.setItem('iptv_current_item', JSON.stringify(playerItem));
-  window.location.href = 'player.html';
-}
-
-function focusPanel() {
-  clearFoc();
-  const panel = $('seriesPanel');
-  if (!panel) return;
-  if (S.panelZone === 'acts') {
-    const btns = panel.querySelectorAll('.spp-acts .spp-btn');
-    btns[Math.min(S.panelActIdx, btns.length - 1)]?.classList.add('foc');
-  } else if (S.panelZone === 'tabs') {
-    panel.querySelectorAll('.spp-tab')[S.panelTabIdx]?.classList.add('foc');
-  } else {
-    const eps = panel.querySelectorAll('.spp-ep:not([disabled])');
-    const el  = eps[S.panelEpIdx];
-    if (el) { el.classList.add('foc'); el.scrollIntoView({ block: 'nearest' }); }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  SEARCH
-// ═══════════════════════════════════════════════════════════════════
-let _searchTimer;
-$('sinput').addEventListener('input', e => {
-  clearTimeout(_searchTimer);
-  _searchTimer = setTimeout(() => {
-    const q = e.target.value.toLowerCase().trim();
-    const c = $('sresults');
-    if (q.length < 2) { c.innerHTML = ''; return; }
-    const res = S.allItems.concat(S.liveItems)
-      .filter(i =>
-        (i.title || '').toLowerCase().includes(q) ||
-        (i.category || '').toLowerCase().includes(q) ||
-        (i.category_name || '').toLowerCase().includes(q) ||
-        (i.plot || '').toLowerCase().includes(q)
-      )
-      .slice(0, 60);
-    c.innerHTML = '';
-    res.forEach((item, i) => {
-      const card = mkCard(item, -1, i, item.isLive);
-      card.onclick = () => activateItem(item);
-      c.appendChild(card);
-    });
-  }, 300);
-});
-
-// ═══════════════════════════════════════════════════════════════════
-//  SETTINGS ACTIONS
-// ═══════════════════════════════════════════════════════════════════
-$('set-reload').onclick=()=>{ $('loading').style.display='flex'; loadContent(); };
-$('set-cache').onclick =()=>{ if(window.AndroidBridge) AndroidBridge.reloadApp(); else location.reload(); };
-$('set-update').onclick=()=>{
-  if (S._updateUrl) { $('update-val').textContent='Téléchargement en cours…'; AndroidBridge.downloadAndInstall(S._updateUrl); }
-  else { $('update-val').textContent='Vérification…'; if(window.AndroidBridge?.checkUpdateAsync) AndroidBridge.checkUpdateAsync(); }
-};
-
-async function checkForUpdate(force = false) {
-  S._forceUpdateCheck = force;
-  $('update-val').textContent = 'Vérification…';
-  S._updateUrl = null;
-
-  if (window.AndroidBridge?.checkUpdateAsync) {
-    AndroidBridge.checkUpdateAsync();
-    return;
-  }
-
-  try {
-    const r = await fetch(
-      'https://api.github.com/repos/morpheus45/google-tv-perso/releases/latest',
-      { headers: { 'Accept': 'application/vnd.github.v3+json' } }
-    );
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const json = await r.json();
-    const parts = json.tag_name.replace('v','').split('.');
-    const latestVersion = parseInt(parts[parts.length - 1], 10);
-    const currentVersion = parseInt(window.AndroidBridge?.getApkVersion?.() || '0', 10);
-    const dlUrl = json.assets?.[0]?.browser_download_url || '';
-    window._onUpdateResult({ currentVersion, latestVersion,
-      tagName: json.tag_name, downloadUrl: dlUrl,
-      upToDate: latestVersion <= currentVersion });
-  } catch(e) {
-    $('update-val').textContent = 'Erreur de connexion';
-  }
-}
-
-window._onUpdateResult = function(data) {
-  if (!data) { $('update-val').textContent='Erreur de connexion'; S._updateUrl=null; return; }
-  if (data.upToDate) {
-    $('update-val').textContent=`✓ À jour (v${data.currentVersion})`;
-    S._updateUrl=null;
-    if (S._forceUpdateActive) {
-      S._forceUpdateActive=false;
-      $('force-update').classList.remove('on');
-    }
-  } else if (window.AndroidBridge?.downloadAndInstall) {
-    S._updateUrl = data.downloadUrl;
-    $('update-val').textContent=`⬆ v${data.latestVersion} disponible — OK pour installer`;
-    if (S._forceUpdateCheck) showForceUpdate(data);
-  } else {
-    S._updateUrl = null;
-    $('update-val').textContent=`⬆ v${data.latestVersion} disponible — Installer manuellement`;
-    if (S._forceUpdateCheck) showForceUpdate(data);
-    if (window.AndroidBridge?.showToast) {
-      AndroidBridge.showToast('Nouvelle version v'+data.latestVersion+' sur github.com/morpheus45/google-tv-perso');
-    }
-  }
-};
-window._onDownloadProgress = function(pct) {
-  $('update-val').textContent=`Téléchargement : ${pct}%`;
-  if (S._forceUpdateActive) {
-    $('fu-progress').textContent = `Téléchargement : ${pct}%`;
-    if (pct >= 100) $('fu-progress').textContent = 'Installation en cours…';
-  }
-};
-window.addEventListener('update_install_started', ()=>{
-  $('update-val').textContent='Installation en cours…';
-  S._updateUrl=null;
-  if (S._forceUpdateActive) {
-    $('fu-progress').textContent = 'Installation lancée — veuillez confirmer sur votre TV';
-    const btn=$('fu-btn');
-    btn.disabled=false;
-    btn.textContent='🔄 Redémarrer l\'application';
-    btn.onclick=()=>{
-      S._forceUpdateActive=false;
-      if(window.AndroidBridge?.reloadApp) AndroidBridge.reloadApp();
-      else location.reload();
-    };
-  }
-});
-
-function showForceUpdate(data) {
-  S._forceUpdateActive = true;
-  $('fu-title').textContent = `Mise à jour v${data.latestVersion} disponible`;
-  $('fu-ver').textContent = `Version installée : ${data.currentVersion} → Nouvelle version : ${data.latestVersion}`;
-  $('force-update').classList.add('on');
-  $('fu-btn').classList.add('foc');
-}
-
-function startForceInstall() {
-  if (S._updateUrl && window.AndroidBridge?.downloadAndInstall) {
-    $('fu-btn').disabled = true;
-    $('fu-btn').textContent = '⏳ Téléchargement…';
-    $('fu-progress').textContent = 'Démarrage du téléchargement…';
-    AndroidBridge.downloadAndInstall(S._updateUrl);
-  } else {
-    $('fu-progress').textContent = 'Rendez-vous sur : github.com/morpheus45/google-tv-perso';
-    if (window.AndroidBridge?.showToast) {
-      AndroidBridge.showToast('Téléchargez l\'APK sur github.com/morpheus45/google-tv-perso');
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
 //  INIT
-// ═══════════════════════════════════════════════════════════════════
-(async function init() {
-  $('home-view').style.display='flex';
-  S.zone='hero'; S.hBtn=0;
+// ══════════════════════════════════════════════════
+(async function init(){
+  S.zone='nav'; S.navIdx=0;
+  gotoSection('home');
   focus();
-
-  try {
-    const raw = sessionStorage.getItem('pf_last_progress');
-    if (raw) {
-      const d = JSON.parse(raw);
-      if (d.key && d.pct != null) saveProg(d.key, d.pct);
-      if (d.item) pushHist(d.item);
-      sessionStorage.removeItem('pf_last_progress');
-    }
-  } catch {}
-
-  getEpMap();
   await loadContent();
-  focus();
-  checkForUpdate(true);
 })();
 </script>
 </body>
