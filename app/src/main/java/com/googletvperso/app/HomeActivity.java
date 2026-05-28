@@ -1,11 +1,14 @@
 package com.googletvperso.app;
 
 import android.annotation.SuppressLint;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.speech.RecognizerIntent;
 import android.view.KeyEvent;
 import android.view.View;
+import java.util.ArrayList;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -34,6 +37,7 @@ import androidx.fragment.app.FragmentActivity;
 public class HomeActivity extends FragmentActivity {
 
     private static final String HOME_URL = "file:///android_asset/index.html";
+    private static final int VOICE_REQUEST_CODE = 1001;
 
     private WebView webView;
 
@@ -174,6 +178,8 @@ public class HomeActivity extends FragmentActivity {
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
             case KeyEvent.KEYCODE_MEDIA_PLAY:
             case KeyEvent.KEYCODE_MEDIA_PAUSE:    jsEvent = "tv_playpause"; break;
+            case KeyEvent.KEYCODE_SEARCH:
+            case 231:                             jsEvent = "tv_voice"; break; // KEYCODE_VOICE_ASSIST
         }
 
         if (jsEvent != null) {
@@ -190,6 +196,26 @@ public class HomeActivity extends FragmentActivity {
         // Toujours relayer BACK au JS — il gère le comportement (fermer overlay, etc.)
         webView.evaluateJavascript(
             "window.dispatchEvent(new CustomEvent('tv_back'));", null);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == VOICE_REQUEST_CODE) {
+            if (resultCode == RESULT_OK && data != null) {
+                ArrayList<String> results = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                if (results != null && !results.isEmpty()) {
+                    String text = results.get(0)
+                        .replace("\\", "\\\\")
+                        .replace("'", "\\'")
+                        .replace("\n", " ");
+                    final String js = "window.onVoiceResult('" + text + "');";
+                    webView.post(() -> webView.evaluateJavascript(js, null));
+                    return;
+                }
+            }
+            webView.post(() -> webView.evaluateJavascript("window.onVoiceResult(null);", null));
+        }
     }
 
     // ── Lecteur système fallback ─────────────────────────────────────────────
@@ -250,6 +276,24 @@ public class HomeActivity extends FragmentActivity {
             act.runOnUiThread(() ->
                 VlcPlayerActivity.start(act, url, title, isLive)
             );
+        }
+
+        /** Lance la reconnaissance vocale Android */
+        @JavascriptInterface
+        public void startVoiceSearch() {
+            act.runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fr-FR");
+                    intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Que cherchez-vous ?");
+                    intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+                    act.startActivityForResult(intent, VOICE_REQUEST_CODE);
+                } catch (ActivityNotFoundException e) {
+                    act.webView.post(() ->
+                        act.webView.evaluateJavascript("window.onVoiceResult(null);", null));
+                }
+            });
         }
 
         /** Fallback lecteur système */
