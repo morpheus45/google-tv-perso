@@ -162,8 +162,21 @@ public class HomeActivity extends FragmentActivity {
 
     // ── D-PAD : relayer les touches au JS comme CustomEvent ──────────────────
 
+    private long _lastNavMs = 0;
+    private static final long NAV_DEBOUNCE_MS = 130; // anti-repeat: 130ms entre chaque nav
+
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // Ignorer les répétitions trop rapides (touche maintenue)
+        // Laisser passer le 1er appui (repeatCount==0) toujours
+        // Pour les répétitions: seulement si >= 130ms depuis le dernier événement traité
+        if (event.getRepeatCount() > 0) {
+            long now = System.currentTimeMillis();
+            if (now - _lastNavMs < NAV_DEBOUNCE_MS) return true;
+            _lastNavMs = now;
+        } else {
+            _lastNavMs = System.currentTimeMillis();
+        }
         String jsEvent = null;
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_UP:        jsEvent = "tv_up";    break;
