@@ -755,7 +755,8 @@ async function loadContent(){
       isLive:true,
     }));
 
-    S.heroPool=shuffle(S.allItems.filter(i=>i.image&&isClean(i))).slice(0,80);
+    // Hero pool: items propres, de preference avec image mais pas obligatoire
+    S.heroPool=shuffle(S.allItems.filter(i=>isClean(i))).slice(0,80);
 
     // Build rows
     const rows=[];
