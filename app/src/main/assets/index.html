@@ -715,33 +715,30 @@ function inferQuality(src){
 }
 
 // ══════ NETWORK ══════════════════════════════════════════════════════════
-// Callbacks pour fetchJsonAsync (data = base64 ou null)
+// Callbacks pour fetchJsonAsync
 const _fetchCbs={};
-window._fetchCb=function(id,data){
+// Java signale que le resultat est pret (signal leger, pas de gros JSON)
+window._onFetchReady=function(id,ok){
   if(!_fetchCbs[id])return;
   let parsed=null;
-  try{
-    if(data&&typeof data==='string'){
-      // Decoder base64 -> JSON
-      const raw=atob(data);
-      const bytes=new Uint8Array(raw.length);
-      for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
-      const text=new TextDecoder('utf-8').decode(bytes);
-      parsed=JSON.parse(text);
-    }
-  }catch(e){}
+  if(ok&&window.AndroidBridge?.getAsyncResult){
+    try{
+      const raw=AndroidBridge.getAsyncResult(id); // recuperation sync instantanee
+      if(raw)parsed=JSON.parse(raw);
+    }catch(e){}
+  }
   _fetchCbs[id](parsed);delete _fetchCbs[id];
 };
 
-// Fetch ASYNCHRONE non-bloquant (3 fetches en parallele = ~1-3s au lieu de 30s)
+// Fetch ASYNCHRONE non-bloquant — 3 threads Java en parallele
 function bridgeFetchAsync(url){
   return new Promise(resolve=>{
     if(window.AndroidBridge?.fetchJsonAsync){
-      const id='f'+Date.now()+Math.random().toString(36).slice(2);
+      const id='f'+Date.now().toString(36)+Math.random().toString(36).slice(2);
       _fetchCbs[id]=resolve;
-      try{AndroidBridge.fetchJsonAsync(url,id);return;}catch{delete _fetchCbs[id];}
+      try{AndroidBridge.fetchJsonAsync(url,id);return;}catch(e){delete _fetchCbs[id];}
     }
-    // Fallback fetch() avec timeout 8s
+    // Fallback fetch() navigateur avec timeout 8s
     const ctrl=new AbortController();
     const t=setTimeout(()=>ctrl.abort(),8000);
     fetch(url,{signal:ctrl.signal})

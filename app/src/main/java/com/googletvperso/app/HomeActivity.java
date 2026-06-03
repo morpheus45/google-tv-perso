@@ -329,12 +329,16 @@ public class HomeActivity extends FragmentActivity {
             }
         }
 
-        /** Requête HTTP ASYNCHRONE — non-bloquante, résultat via window._fetchCb(id, data) */
+        // Stockage des resultats async (evite de passer de gros JSON via evaluateJavascript)
+        private static final java.util.concurrent.ConcurrentHashMap<String, String> _asyncStore =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+        /** Requête HTTP ASYNCHRONE — Java fetch en thread, JS recupere via getAsyncResult() */
         @JavascriptInterface
         public void fetchJsonAsync(final String url, final String cbId) {
             new Thread(() -> {
                 java.net.HttpURLConnection conn = null;
-                String result = "null";
+                String result = null;
                 try {
                     java.net.URL u = new java.net.URL(url.replace("https://", "http://"));
                     conn = (java.net.HttpURLConnection) u.openConnection();
@@ -350,18 +354,17 @@ public class HomeActivity extends FragmentActivity {
                 } finally {
                     if (conn != null) conn.disconnect();
                 }
-                // Encoder en base64 pour eviter tout probleme de caracteres speciaux
-                String encoded = "null";
-                if (result != null) {
-                    try {
-                        encoded = "'" + android.util.Base64.encodeToString(
-                            result.getBytes("UTF-8"), android.util.Base64.NO_WRAP) + "'";
-                    } catch (Exception e) { encoded = "null"; }
-                }
-                final String finalEncoded = encoded;
+                // Stocker en memoire, signaler JS avec juste l'ID (pas de gros JSON)
+                if (result != null) _asyncStore.put(cbId, result);
                 act.runOnUiThread(() -> act.webView.evaluateJavascript(
-                    "window._fetchCb('" + cbId + "'," + finalEncoded + ");", null));
+                    "window._onFetchReady('" + cbId + "'," + (result != null ? "true" : "false") + ");", null));
             }).start();
+        }
+
+        /** JS appelle ceci pour recuperer le resultat stocke (sync, instantane) */
+        @JavascriptInterface
+        public String getAsyncResult(final String cbId) {
+            return _asyncStore.remove(cbId); // supprime apres lecture
         }
 
         /** Affiche un toast système */
