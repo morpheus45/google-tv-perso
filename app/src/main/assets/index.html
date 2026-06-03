@@ -3,6 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1920,initial-scale=1,user-scalable=no">
+<script>
+// Scale automatique : adapte le contenu 1920x1080 a n importe quelle TV
+(function(){
+  var sw=screen.width||1920, sh=screen.height||1080;
+  var scale=Math.min(sw/1920, sh/1080);
+  if(scale<0.98){
+    var s=document.createElement('style');
+    s.textContent='#app,#bg{transform:scale('+scale.toFixed(4)+');transform-origin:top left}';
+    document.head.appendChild(s);
+  }
+})();
+</script>
 <title>Cosmos TV</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}

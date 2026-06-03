@@ -83,7 +83,7 @@ public class HomeActivity extends FragmentActivity {
         ws.setUseWideViewPort(true);
         ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         ws.setTextZoom(100);            // empêche le zoom système des polices TV
-        ws.setLoadWithOverviewMode(false); // pas de zoom-out automatique avec viewport fixe
+        // NOTE: setLoadWithOverviewMode reste true (defaut) pour que la TV 4K zoome correctement
 
         // UA Android TV pour que l'app JS détecte la TV
         String ua = ws.getUserAgentString().replace("Mobile", "TV");
