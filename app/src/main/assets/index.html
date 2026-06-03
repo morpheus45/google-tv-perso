@@ -82,7 +82,7 @@ html,body{
   cursor:pointer;white-space:nowrap;transition:background .1s,color .1s;
 }
 .ni.active{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
-.ni.foc{background:rgba(255,255,255,.28)!important;color:#fff!important;font-weight:700}
+.ni.foc{background:rgba(255,255,255,.35)!important;color:#fff!important;font-weight:700;box-shadow:0 0 0 2px #fff}
 #nav-right{
   position:absolute;right:var(--safe);top:50%;transform:translateY(-50%);
   display:flex;align-items:center;gap:10px;pointer-events:auto;
@@ -179,7 +179,7 @@ html,body{
 .btn-play{background:#fff;color:#0a0e1e}
 .btn-info{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.25)}
 .btn-fav {background:rgba(255,255,255,.09);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.18)}
-.btn-hero.foc{box-shadow:0 0 0 2.5px var(--accent)}
+.btn-hero.foc{box-shadow:0 0 0 3px #fff,0 0 20px rgba(79,142,247,.6);transform:scale(1.05)}
 #hero-dots{
   position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
   display:flex;gap:6px;z-index:3;
@@ -208,9 +208,10 @@ html,body{
   transition:transform .12s ease,box-shadow .12s ease;
 }
 .card.foc{
-  transform:translateY(-7px);
-  box-shadow:0 0 0 2px var(--accent),0 18px 50px rgba(var(--hc),.4),0 8px 20px rgba(0,0,0,.8);
-  z-index:5;border-color:rgba(79,142,247,.4);
+  transform:translateY(-10px) scale(1.07);
+  box-shadow:0 0 0 3px var(--accent),0 22px 60px rgba(var(--hc),.55),0 10px 30px rgba(0,0,0,.9);
+  z-index:5;border-color:var(--accent);
+  filter:brightness(1.15);
 }
 /* shimmer supprime pour fluidite sur TV */
 .card-iw{position:relative}
@@ -1542,7 +1543,10 @@ function onKey(type){
 
   if(z==='row'){
     if(type==='U'){
-      if(S.rowIdx===0){S.zone='hero';S.hBtn=0;focus();}
+      if(S.rowIdx===0){
+        // 1 fois UP → hero, 2e fois UP depuis hero → nav (via hero zone)
+        S.zone='hero';S.hBtn=0;focus();
+      }
       else{S.rowIdx--;S.cardIdx=0;focus();}
     }
     else if(type==='D'){
@@ -1574,7 +1578,7 @@ function onKey(type){
 
   if(z==='grid'||z==='search'){
     const items=z==='search'?qAll('#search-results .card'):qAll('#grid-wrap .card');
-    const cols=Math.floor((1920-104)/144)||10;
+    const cols=Math.floor((1920-104)/(148+12))||10; // cw=148 + gap=12
     if(type==='U'){
       if(S.gridIdx<cols){S.zone=z==='grid'?'filter':'nav';focus();}
       else{S.gridIdx=Math.max(0,S.gridIdx-cols);focus();}
