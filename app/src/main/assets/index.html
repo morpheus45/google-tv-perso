@@ -715,9 +715,23 @@ function inferQuality(src){
 }
 
 // ══════ NETWORK ══════════════════════════════════════════════════════════
-// Callbacks pour fetchJsonAsync
+// Callbacks pour fetchJsonAsync (data = base64 ou null)
 const _fetchCbs={};
-window._fetchCb=function(id,data){ if(_fetchCbs[id]){_fetchCbs[id](data);delete _fetchCbs[id];} };
+window._fetchCb=function(id,data){
+  if(!_fetchCbs[id])return;
+  let parsed=null;
+  try{
+    if(data&&typeof data==='string'){
+      // Decoder base64 -> JSON
+      const raw=atob(data);
+      const bytes=new Uint8Array(raw.length);
+      for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+      const text=new TextDecoder('utf-8').decode(bytes);
+      parsed=JSON.parse(text);
+    }
+  }catch(e){}
+  _fetchCbs[id](parsed);delete _fetchCbs[id];
+};
 
 // Fetch ASYNCHRONE non-bloquant (3 fetches en parallele = ~1-3s au lieu de 30s)
 function bridgeFetchAsync(url){

@@ -350,9 +350,17 @@ public class HomeActivity extends FragmentActivity {
                 } finally {
                     if (conn != null) conn.disconnect();
                 }
-                final String finalResult = result;
+                // Encoder en base64 pour eviter tout probleme de caracteres speciaux
+                String encoded = "null";
+                if (result != null) {
+                    try {
+                        encoded = "'" + android.util.Base64.encodeToString(
+                            result.getBytes("UTF-8"), android.util.Base64.NO_WRAP) + "'";
+                    } catch (Exception e) { encoded = "null"; }
+                }
+                final String finalEncoded = encoded;
                 act.runOnUiThread(() -> act.webView.evaluateJavascript(
-                    "window._fetchCb('" + cbId + "'," + finalResult + ");", null));
+                    "window._fetchCb('" + cbId + "'," + finalEncoded + ");", null));
             }).start();
         }
 
