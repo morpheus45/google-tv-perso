@@ -449,7 +449,7 @@ html,body{
 
   <!-- NAV -->
   <nav id="topnav">
-    <div class="nav-logo">
+    <div class="nav-logo" id="nav-logo">
       <svg viewBox="0 0 28 28" fill="none">
         <rect x="2" y="5" width="24" height="17" rx="3" fill="#4f8ef7"/>
         <path d="M8 13l3.5 3L20 10" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -725,15 +725,12 @@ function setHeroAmbient(r,g,b){
 // ══════ CONTENT LOADING ══════════════════════════════════════════════════
 async function loadContent(){
   $('loading').hidden=false;
-  // Timeout de securite : cache le spinner apres 20s quoi qu il arrive
-  const safetyTimer=setTimeout(()=>{$('loading').hidden=true;},20000);
   try{
-    // bridgeFetch = Android Java HTTP (10s timeout, pas de CORS) avec fallback fetch
-    const [vodJson,seriesJson,liveJson]=await Promise.all([
-      bridgeFetch(GH+'vod.json'),
-      bridgeFetch(GH+'series.json'),
-      bridgeFetch(GH+'live.json'),
-    ]);
+    // Sequential (AndroidBridge.fetchJson est synchrone — bloque JS thread)
+    // Chaque appel a 10s de timeout cote Java
+    const vodJson    = await bridgeFetch(GH+'vod.json');
+    const seriesJson = await bridgeFetch(GH+'series.json');
+    const liveJson   = await bridgeFetch(GH+'live.json');
     const seen=new Set(),byCat={},allVod=[],allSeries=[];
     function addItem(raw,isSerie){
       const item=normalise(raw,isSerie);if(!item)return;
@@ -785,7 +782,7 @@ async function loadContent(){
       setHero(S.heroPool[idx]);
     },30000);
     S.zone='hero';S.hBtn=0;focus();
-  }finally{clearTimeout(safetyTimer);$('loading').hidden=true;}
+  }finally{$('loading').hidden=true;}
 }
 
 // ══════ HERO ═════════════════════════════════════════════════════════════
@@ -1548,6 +1545,9 @@ window._onDownloadProgress=function(pct){
 };
 
 // ══════ INIT ═════════════════════════════════════════════════════════════
+// Safety: cache le spinner apres 25s dans tous les cas
+setTimeout(()=>{$('loading').hidden=true;},25000);
+
 loadContent();
 
 // Auto-check update 12s apres demarrage (evite de perturber le chargement initial)
