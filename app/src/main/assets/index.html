@@ -821,68 +821,95 @@ function setHeroAmbient(r,g,b){
     #040410`;
 }
 
+// ══════ CONTENT CACHE ════════════════════════════════════════════════════
+const CACHE_KEY='pf_content_v2';
+const CACHE_TTL=7200000; // 2h
+
+function getCached(){
+  try{
+    const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
+    if(c&&c.ts&&(Date.now()-c.ts)<CACHE_TTL&&c.vod?.length>0)return c;
+  }catch{}return null;
+}
+function saveCache(vod,series,live){
+  try{
+    // Ne stocker que les champs essentiels pour limiter la taille
+    const trim=arr=>arr.map(i=>({
+      title:i.title,image:i.image,category:i.category,
+      url:i.url,stream_id:i.stream_id,series_id:i.series_id,
+      quality:i.quality,isLive:i.isLive,plot:(i.plot||'').slice(0,200)
+    }));
+    localStorage.setItem(CACHE_KEY,JSON.stringify({
+      vod:trim(vod),series:trim(series),live:trim(live),ts:Date.now()
+    }));
+  }catch(e){} // ignore si localStorage plein
+}
+
 // ══════ CONTENT LOADING ══════════════════════════════════════════════════
 async function loadContent(){
   $('loading').hidden=false;
   try{
-    // Synchrone via Android Java HTTP (8s timeout chacun, contourne les CORS)
+    // 1) Essayer le cache d abord (instantane)
+    const cache=getCached();
+    if(cache){
+      buildContent(cache.vod,cache.series,cache.live);
+      $('loading').hidden=true;
+      return; // cache OK, pas besoin de fetcher maintenant
+    }
+    // 2) Premier lancement ou cache expire : fetch reseau
     const vodJson    = await bridgeFetch(GH+'vod.json');
     const seriesJson = await bridgeFetch(GH+'series.json');
     const liveJson   = await bridgeFetch(GH+'live.json');
-    const seen=new Set(),byCat={},allVod=[],allSeries=[];
+    const seen=new Set(),allVod=[],allSeries=[];
     function addItem(raw,isSerie){
       const item=normalise(raw,isSerie);if(!item)return;
       const key=item.title+'|'+(item.series_id||item.stream_id||'');
       if(seen.has(key))return;seen.add(key);
       if(isSerie)allSeries.push(item);else allVod.push(item);
-      const cat=item.category||'Autre';
-      (byCat[cat]=byCat[cat]||[]).push(item);
     }
     extractArr(vodJson).forEach(r=>addItem(r,false));
     extractArr(seriesJson).forEach(r=>addItem(r,true));
-    S.allVod=allVod;S.allSeries=allSeries;S.allItems=[...allVod,...allSeries];
-
-    // Live
-    const rawLive=extractArr(liveJson).map((ch,i)=>({
+    const liveRaw=extractArr(liveJson).map((ch,i)=>({
       title:cleanTitle(ch.title||ch.name||'Sans titre'),
       image:ch.stream_icon||ch.image||'',
       category:cleanTitle(ch.category_name||ch.category||'Live TV'),
-      plot:'',
+      plot:'',isLive:true,
       url:ch.stream_url||ch.url||`http://goldenlink.live/live/${U}/${P}/${ch.stream_id||i}.ts`,
       stream_id:ch.stream_id||String(i),
-      isLive:true,
     }));
-    S.liveItems=groupLiveItems(rawLive);
-
-    // Hero pool: items propres, de preference avec image mais pas obligatoire
-    S.heroPool=shuffle(S.allItems.filter(i=>isClean(i))).slice(0,80);
-
-    // Build rows
-    const rows=[];
-    const histItems=getHist().slice(0,15).map(h=>h.item).filter(i=>i&&!i.isLive&&isClean(i));
-    if(histItems.length)rows.push({title:'Continuer a regarder',items:histItems});
-    const favItems=getFavs().slice(0,30).map(f=>f.item).filter(i=>i&&isClean(i));
-    if(favItems.length)rows.push({title:'Mes favoris',items:favItems});
-    if(S.heroPool.length)rows.push({title:'Recommande pour vous',items:S.heroPool.slice(0,30)});
-    Object.entries(byCat)
-      .filter(([cat])=>!ADULT_RE.test(cat)&&!LATEST_RE.test(cat))
-      .sort((a,b)=>b[1].length-a[1].length)
-      .filter(([,v])=>v.length>=3).slice(0,18)
-      .forEach(([cat,items])=>rows.push({title:cat,items:items.filter(isClean).slice(0,20)}));
-    if(S.liveItems.length)rows.push({title:'TV en Direct',items:S.liveItems.slice(0,30),isLive:true});
-    S.rows=rows;
-
-    // Hero
-    if(S.heroPool.length)setHero(S.heroPool[0]);
-    renderRows(rows);
-    clearInterval(S.heroTimer);
-    S.heroTimer=setInterval(()=>{
-      if(S.zone!=='hero')return;
-      const idx=Math.floor(Math.random()*Math.min(S.heroPool.length,30));
-      setHero(S.heroPool[idx]);
-    },30000);
-    S.zone='hero';S.hBtn=0;focus();
+    saveCache(allVod,allSeries,liveRaw); // sauvegarder pour prochains lancements
+    buildContent(allVod,allSeries,liveRaw);
   }finally{$('loading').hidden=true;}
+}
+
+function buildContent(allVod,allSeries,liveRaw){
+  S.allVod=allVod;S.allSeries=allSeries;S.allItems=[...allVod,...allSeries];
+  S.liveItems=groupLiveItems(liveRaw);
+  S.heroPool=shuffle(S.allItems.filter(i=>isClean(i))).slice(0,80);
+  // byCat pour les rangees de categories
+  const byCat={};
+  S.allItems.forEach(item=>{const c=item.category||'Autre';(byCat[c]=byCat[c]||[]).push(item);});
+  const rows=[];
+  const histItems=getHist().slice(0,15).map(h=>h.item).filter(i=>i&&!i.isLive&&isClean(i));
+  if(histItems.length)rows.push({title:'Continuer a regarder',items:histItems});
+  const favItems=getFavs().slice(0,30).map(f=>f.item).filter(i=>i&&isClean(i));
+  if(favItems.length)rows.push({title:'Mes favoris',items:favItems});
+  if(S.heroPool.length)rows.push({title:'Recommande pour vous',items:S.heroPool.slice(0,30)});
+  Object.entries(byCat)
+    .filter(([cat])=>!ADULT_RE.test(cat)&&!LATEST_RE.test(cat))
+    .sort((a,b)=>b[1].length-a[1].length)
+    .filter(([,v])=>v.length>=3).slice(0,18)
+    .forEach(([cat,items])=>rows.push({title:cat,items:items.filter(isClean).slice(0,20)}));
+  if(S.liveItems.length)rows.push({title:'TV en Direct',items:S.liveItems.slice(0,30),isLive:true});
+  S.rows=rows;
+  if(S.heroPool.length)setHero(S.heroPool[0]);
+  renderRows(rows);
+  clearInterval(S.heroTimer);
+  S.heroTimer=setInterval(()=>{
+    if(S.zone!=='hero')return;
+    setHero(S.heroPool[Math.floor(Math.random()*Math.min(S.heroPool.length,30))]);
+  },30000);
+  S.zone='hero';S.hBtn=0;focus();
 }
 
 // ══════ HERO ═════════════════════════════════════════════════════════════
@@ -1297,10 +1324,13 @@ function gotoSection(s){
 // ══════ SETTINGS ════════════════════════════════════════════════════════
 function renderSettings(){
   const v=window.AndroidBridge?.getApkVersion?.()||'?';
+  const cache=getCached();
+  const cacheAge=cache?Math.round((Date.now()-cache.ts)/60000)+'min':'-';
   const items=[
     {label:'Version APK',desc:'v'+v,action:'version'},
     {label:'Verifier mise a jour',desc:'Telecharger derniere version',action:'update'},
-    {label:'Recharger application',desc:'Rafraichir le contenu',action:'reload'},
+    {label:'Rafraichir le contenu',desc:'Cache: '+cacheAge+' (vide = nouveau telechargement)',action:'refresh'},
+    {label:'Recharger application',desc:'Rafraichir l interface',action:'reload'},
   ];
   const list=$('set-list');list.innerHTML='';
   items.forEach((it,i)=>{
@@ -1315,6 +1345,11 @@ function activateSetting(idx){
   const action=items[idx]?.dataset.action;
   if(action==='reload'){window.AndroidBridge?.reloadApp?.();}
   else if(action==='update'){window.AndroidBridge?.checkUpdateAsync?.();}
+  else if(action==='refresh'){
+    // Vider le cache et recharger le contenu
+    try{localStorage.removeItem(CACHE_KEY);}catch{}
+    loadContent();gotoSection('home');
+  }
 }
 
 // ══════ FOCUS ════════════════════════════════════════════════════════════
