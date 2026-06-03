@@ -409,6 +409,36 @@ html,body{
 }
 #voice-cancel.foc{color:#fff;border-color:rgba(255,255,255,.5)}
 
+/* ─── QUALITY PICKER (Live TV) ───────────────────────────────────────── */
+#qual-picker{
+  position:absolute;inset:0;z-index:85;background:rgba(0,0,0,.82);
+  display:flex;align-items:center;justify-content:center;
+}
+.qp-box{
+  background:rgba(14,18,42,.98);border:1px solid rgba(255,255,255,.12);
+  border-radius:20px;padding:28px 36px;min-width:360px;max-width:500px;
+  box-shadow:0 20px 60px rgba(0,0,0,.8);
+}
+.qp-title{font-size:20px;font-weight:800;margin-bottom:6px}
+.qp-sub{font-size:12px;color:var(--dim);margin-bottom:18px}
+.qp-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 18px;border-radius:12px;margin-bottom:8px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
+  cursor:pointer;
+}
+.qp-item.foc{background:rgba(79,142,247,.22);border-color:var(--accent)}
+.qp-qual{font-size:16px;font-weight:700;color:#fff}
+.qp-badge{
+  font-size:10px;font-weight:800;padding:3px 8px;border-radius:5px;letter-spacing:.4px;
+}
+.qb-fhd{background:rgba(79,142,247,.85);color:#fff}
+.qb-hd{background:rgba(100,200,100,.85);color:#111}
+.qb-sd{background:rgba(180,180,180,.7);color:#111}
+.qb-hevc{background:rgba(200,100,255,.85);color:#fff}
+.qb-4k{background:rgba(255,196,90,.92);color:#1a1000}
+.qb-std{background:rgba(255,255,255,.15);color:#fff}
+
 /* ─── RESUME MODAL ───────────────────────────────────────────────────── */
 #resume-modal{
   position:absolute;inset:0;z-index:80;background:rgba(0,0,0,.88);
@@ -581,6 +611,15 @@ html,body{
     <div id="voice-cancel">ANNULER</div>
   </div>
 
+  <!-- QUALITY PICKER -->
+  <div id="qual-picker" hidden>
+    <div class="qp-box">
+      <div class="qp-title" id="qp-title"></div>
+      <div class="qp-sub">Choisir la qualite</div>
+      <div id="qp-items"></div>
+    </div>
+  </div>
+
   <!-- RESUME -->
   <div id="resume-modal" hidden>
     <div class="resume-box">
@@ -644,6 +683,7 @@ const S = {
   resumeEpIdx:null, resumeStartMs:0, resumeBtn:0,
   lastProgKey:null, lastProgItem:null,
   searchIdx:0, setIdx:0,
+  qualItem:null, qualIdx:0,
 };
 
 // ══════ HELPERS ══════════════════════════════════════════════════════════
@@ -726,6 +766,33 @@ function normalise(raw,isSerie){
   };
 }
 
+// ══════ LIVE TV GROUPING ════════════════════════════════════════════════
+const QUAL_SUFFIX = /[\s|_\-]+(4K|UHD|FHD|HEVC|H\.?265|HD|SD)\s*$/i;
+const QUAL_BADGE  = {
+  '4K':'qb-4k','UHD':'qb-4k','FHD':'qb-fhd','HEVC':'qb-hevc',
+  'H265':'qb-hevc','H.265':'qb-hevc','HD':'qb-hd','SD':'qb-sd'
+};
+function qualLabel(title){
+  const m=title.match(QUAL_SUFFIX);
+  return m?m[1].toUpperCase():'STD';
+}
+function qualBadge(q){ return QUAL_BADGE[q]||'qb-std'; }
+function groupLiveItems(items){
+  const groups={}, order=[];
+  items.forEach(item=>{
+    const base=item.title.replace(QUAL_SUFFIX,'').trim()||item.title;
+    if(!groups[base]){groups[base]={title:base,image:item.image,category:item.category,isLive:true,variants:[]};order.push(base);}
+    const q=qualLabel(item.title);
+    groups[base].variants.push({...item,qualLabel:q});
+    if(item.image&&!groups[base].image)groups[base].image=item.image;
+  });
+  return order.map(base=>{
+    const g=groups[base];
+    if(g.variants.length===1){return g.variants[0];}// une seule qualite = tuile normale
+    return{title:g.title,image:g.image||'',category:g.category,isLive:true,isGroup:true,variants:g.variants};
+  });
+}
+
 // ══════ AMBIENT COLOR ═══════════════════════════════════════════════════
 function extractColor(imgEl,cb){
   try{
@@ -768,7 +835,7 @@ async function loadContent(){
     S.allVod=allVod;S.allSeries=allSeries;S.allItems=[...allVod,...allSeries];
 
     // Live
-    S.liveItems=extractArr(liveJson).map((ch,i)=>({
+    const rawLive=extractArr(liveJson).map((ch,i)=>({
       title:cleanTitle(ch.title||ch.name||'Sans titre'),
       image:ch.stream_icon||ch.image||'',
       category:cleanTitle(ch.category_name||ch.category||'Live TV'),
@@ -777,6 +844,7 @@ async function loadContent(){
       stream_id:ch.stream_id||String(i),
       isLive:true,
     }));
+    S.liveItems=groupLiveItems(rawLive);
 
     // Hero pool: items propres, de preference avec image mais pas obligatoire
     S.heroPool=shuffle(S.allItems.filter(i=>isClean(i))).slice(0,80);
@@ -880,7 +948,7 @@ function mkCard(item,ri,ci,isLive){
   // Badge
   const badge=document.createElement('div');
   badge.className='cbadge '+(live?'cbl':item.series_id?'cbs':'cbf');
-  badge.textContent=live?'LIVE':item.series_id?'SÉRIE':'FILM';
+  badge.textContent=item.isGroup?'LIVE ▾':live?'LIVE':item.series_id?'SÉRIE':'FILM';
   iw.appendChild(badge);
   el.appendChild(iw);
   const info=document.createElement('div');info.className='cinfo';
@@ -1133,6 +1201,26 @@ window.onVoiceResult=function(text){
   setTimeout(()=>{closeVoice();doSearch(text);gotoSection('search');},700);
 };
 
+// ══════ QUALITY PICKER ══════════════════════════════════════════════════
+function openQualPicker(item){
+  S.qualItem=item;S.qualIdx=0;
+  $('qp-title').textContent=item.title;
+  const c=$('qp-items');c.innerHTML='';
+  item.variants.forEach((v,i)=>{
+    const el=document.createElement('div');
+    el.className='qp-item';el.dataset.qi=i;
+    const bClass=qualBadge(v.qualLabel);
+    el.innerHTML=`<span class="qp-qual">${esc(v.qualLabel==='STD'?'Standard':v.qualLabel)}</span><span class="qp-badge ${bClass}">${esc(v.qualLabel)}</span>`;
+    c.appendChild(el);
+  });
+  $('qual-picker').hidden=false;
+  S.zone='qual-picker';focus();
+}
+function closeQualPicker(){
+  $('qual-picker').hidden=true;
+  S.zone=S.sec==='home'?'row':'grid';focus();
+}
+
 // ══════ SEARCH ══════════════════════════════════════════════════════════
 function doSearch(q){
   if(!q)return;
@@ -1150,6 +1238,7 @@ function doSearch(q){
   results.forEach((item,i)=>{const c=mkCard(item,-2,i,item.isLive);c.dataset.si=i;res.appendChild(c);});
 }
 function openItem(item){
+  if(item.isGroup){openQualPicker(item);return;}
   if(item.series_id||(!item.isLive&&!item.url)){openPanel(item);return;}
   S.lastProgKey=item.stream_id?'vid_'+item.stream_id:null;
   S.lastProgItem=item;
@@ -1292,6 +1381,9 @@ function focus(){
   else if(z==='voice'){
     $('voice-cancel').classList.add('foc');
   }
+  else if(z==='qual-picker'){
+    qAll('.qp-item').forEach((el,i)=>el.classList.toggle('foc',i===S.qualIdx));
+  }
 }
 
 function getPillElIdx(pillDataIdx){
@@ -1330,6 +1422,18 @@ function onKey(type){
   }
 
   const z=S.zone;
+
+  if(z==='qual-picker'){
+    if(type==='U'){S.qualIdx=Math.max(0,S.qualIdx-1);focus();}
+    else if(type==='D'){S.qualIdx=Math.min((S.qualItem?.variants?.length||1)-1,S.qualIdx+1);focus();}
+    else if(type==='E'){
+      const v=S.qualItem?.variants?.[S.qualIdx];
+      closeQualPicker();
+      if(v){S.lastProgItem=v;playItem(v,0);}
+    }
+    else if(type==='B'){closeQualPicker();}
+    return;
+  }
 
   if(z==='voice'){
     if(type==='B'||type==='back'){closeVoice();}
