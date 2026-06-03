@@ -725,11 +725,14 @@ function setHeroAmbient(r,g,b){
 // ══════ CONTENT LOADING ══════════════════════════════════════════════════
 async function loadContent(){
   $('loading').hidden=false;
+  // Timeout de securite : cache le spinner apres 20s quoi qu il arrive
+  const safetyTimer=setTimeout(()=>{$('loading').hidden=true;},20000);
   try{
+    // bridgeFetch = Android Java HTTP (10s timeout, pas de CORS) avec fallback fetch
     const [vodJson,seriesJson,liveJson]=await Promise.all([
-      loadJSON(GH+'vod.json'),
-      loadJSON(GH+'series.json'),
-      loadJSON(GH+'live.json'),
+      bridgeFetch(GH+'vod.json'),
+      bridgeFetch(GH+'series.json'),
+      bridgeFetch(GH+'live.json'),
     ]);
     const seen=new Set(),byCat={},allVod=[],allSeries=[];
     function addItem(raw,isSerie){
@@ -782,7 +785,7 @@ async function loadContent(){
       setHero(S.heroPool[idx]);
     },30000);
     S.zone='hero';S.hBtn=0;focus();
-  }finally{$('loading').hidden=true;}
+  }finally{clearTimeout(safetyTimer);$('loading').hidden=true;}
 }
 
 // ══════ HERO ═════════════════════════════════════════════════════════════
@@ -1287,6 +1290,19 @@ function scrollToRow(){
 
 // ══════ D-PAD ════════════════════════════════════════════════════════════
 function onKey(type){
+  // Toast update intercept (prioritaire)
+  if(_toastZone){
+    if(type==='L'){qAll('.t-btn').forEach(b=>b.classList.remove('foc'));$('toast-btn-ok').classList.add('foc');}
+    else if(type==='R'){qAll('.t-btn').forEach(b=>b.classList.remove('foc'));$('toast-btn-later').classList.add('foc');}
+    else if(type==='E'){
+      const okFoc=$('toast-btn-ok').classList.contains('foc');
+      if(okFoc&&_updateUrl)window.AndroidBridge?.downloadAndInstall?.(_updateUrl);
+      hideUpdateToast();
+    }
+    else if(type==='B'){hideUpdateToast();}
+    return;
+  }
+
   const z=S.zone;
 
   if(z==='voice'){
@@ -1504,29 +1520,6 @@ $('toast-btn-ok').addEventListener('click',()=>{
   hideUpdateToast();
 });
 $('toast-btn-later').addEventListener('click',hideUpdateToast);
-
-// Intercept tv_enter for toast when active
-const _origOnKey=onKey;
-function onKey(type){
-  if(_toastZone){
-    const focused=document.querySelector('.t-btn.foc');
-    if(type==='L'||type==='R'){
-      const btns=qAll('.t-btn');
-      btns.forEach(b=>b.classList.remove('foc'));
-      if(type==='L')$('toast-btn-ok').classList.add('foc');
-      else $('toast-btn-later').classList.add('foc');
-    }
-    else if(type==='E'){
-      if(focused?.id==='toast-btn-ok'&&_updateUrl){
-        window.AndroidBridge?.downloadAndInstall?.(_updateUrl);
-        hideUpdateToast();
-      }else hideUpdateToast();
-    }
-    else if(type==='B'){hideUpdateToast();}
-    return;
-  }
-  _origOnKey(type);
-}
 
 window._onUpdateResult=function(data){
   if(!data)return;
