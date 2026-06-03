@@ -355,9 +355,10 @@ public class HomeActivity extends FragmentActivity {
                     if (conn != null) conn.disconnect();
                 }
                 // Stocker en memoire, signaler JS avec juste l'ID (pas de gros JSON)
-                if (result != null) _asyncStore.put(cbId, result);
+                final boolean ok = (result != null);
+                if (ok) _asyncStore.put(cbId, result);
                 act.runOnUiThread(() -> act.webView.evaluateJavascript(
-                    "window._onFetchReady('" + cbId + "'," + (result != null ? "true" : "false") + ");", null));
+                    "window._onFetchReady('" + cbId + "'," + ok + ");", null));
             }).start();
         }
 
