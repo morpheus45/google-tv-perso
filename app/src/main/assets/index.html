@@ -715,36 +715,32 @@ function inferQuality(src){
 }
 
 // ══════ NETWORK ══════════════════════════════════════════════════════════
-// Callbacks pour fetchJsonAsync
-const _fetchCbs={};
-// Java signale que le resultat est pret (signal leger, pas de gros JSON)
-window._onFetchReady=function(id,ok){
-  if(!_fetchCbs[id])return;
-  let parsed=null;
-  if(ok&&window.AndroidBridge?.getAsyncResult){
-    try{
-      const raw=AndroidBridge.getAsyncResult(id); // recuperation sync instantanee
-      if(raw)parsed=JSON.parse(raw);
-    }catch(e){}
-  }
-  _fetchCbs[id](parsed);delete _fetchCbs[id];
-};
-
-// Fetch ASYNCHRONE non-bloquant — 3 threads Java en parallele
+// Fetch ASYNCHRONE — Java stocke le resultat, JS poll getAsyncResult() toutes les 150ms
+window._onFetchReady=function(){}; // conserve pour compatibilite Java
 function bridgeFetchAsync(url){
   return new Promise(resolve=>{
-    if(window.AndroidBridge?.fetchJsonAsync){
+    if(window.AndroidBridge?.fetchJsonAsync&&window.AndroidBridge?.getAsyncResult){
       const id='f'+Date.now().toString(36)+Math.random().toString(36).slice(2);
-      _fetchCbs[id]=resolve;
-      try{AndroidBridge.fetchJsonAsync(url,id);return;}catch(e){delete _fetchCbs[id];}
+      try{
+        AndroidBridge.fetchJsonAsync(url,id);
+        let n=0;
+        const poll=setInterval(()=>{
+          n++;
+          try{
+            const raw=AndroidBridge.getAsyncResult(id);
+            if(raw!==null&&raw!==undefined&&raw!==''){
+              clearInterval(poll);
+              let p=null;try{p=JSON.parse(raw);}catch(e){}
+              resolve(p);return;
+            }
+          }catch(e){}
+          if(n>60){clearInterval(poll);resolve(null);} // 9s timeout
+        },150);
+        return;
+      }catch(e){}
     }
-    // Fallback fetch() navigateur avec timeout 8s
-    const ctrl=new AbortController();
-    const t=setTimeout(()=>ctrl.abort(),8000);
-    fetch(url,{signal:ctrl.signal})
-      .then(r=>r.ok?r.json():null)
-      .catch(()=>null)
-      .then(d=>{clearTimeout(t);resolve(d);});
+    // Fallback fetch() navigateur
+    fetch(url).then(r=>r.ok?r.json():null).catch(()=>null).then(resolve);
   });
 }
 // Legacy sync fallback (conserve pour episodes API)
