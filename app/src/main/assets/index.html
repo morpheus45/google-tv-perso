@@ -825,12 +825,10 @@ function setHeroAmbient(r,g,b){
 async function loadContent(){
   $('loading').hidden=false;
   try{
-    // PARALLELE non-bloquant — 3 threads Java simultanes, UI reste fluide
-    const [vodJson,seriesJson,liveJson]=await Promise.all([
-      bridgeFetchAsync(GH+'vod.json'),
-      bridgeFetchAsync(GH+'series.json'),
-      bridgeFetchAsync(GH+'live.json'),
-    ]);
+    // Synchrone via Android Java HTTP (8s timeout chacun, contourne les CORS)
+    const vodJson    = await bridgeFetch(GH+'vod.json');
+    const seriesJson = await bridgeFetch(GH+'series.json');
+    const liveJson   = await bridgeFetch(GH+'live.json');
     const seen=new Set(),byCat={},allVod=[],allSeries=[];
     function addItem(raw,isSerie){
       const item=normalise(raw,isSerie);if(!item)return;
