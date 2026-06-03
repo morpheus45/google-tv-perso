@@ -412,6 +412,30 @@ html,body{
 }
 .spin{width:38px;height:38px;border:3px solid rgba(255,255,255,.12);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ─── UPDATE TOAST ───────────────────────────────────────────────────── */
+#update-toast{
+  position:absolute;bottom:var(--safe);left:50%;transform:translateX(-50%);
+  z-index:95;
+  background:rgba(18,24,50,.97);border:1px solid rgba(79,142,247,.5);
+  border-radius:18px;padding:18px 28px;
+  display:flex;align-items:center;gap:20px;
+  box-shadow:0 8px 40px rgba(0,0,0,.7),0 0 0 1px rgba(79,142,247,.2);
+  animation:toastIn .3s ease;
+  min-width:600px;
+}
+@keyframes toastIn{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+#update-toast .t-icon{font-size:28px;flex-shrink:0}
+#update-toast .t-text{flex:1}
+#update-toast .t-title{font-size:15px;font-weight:700;color:#fff;margin-bottom:3px}
+#update-toast .t-sub{font-size:12px;color:var(--dim)}
+#update-toast .t-btns{display:flex;gap:10px;flex-shrink:0}
+.t-btn{
+  padding:9px 20px;border-radius:999px;font-size:13px;font-weight:600;border:none;cursor:pointer;
+}
+.t-btn-ok{background:var(--accent);color:#fff}
+.t-btn-later{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.2)}
+.t-btn.foc{box-shadow:0 0 0 2.5px #fff}
 </style>
 </head>
 <body>
@@ -543,6 +567,19 @@ html,body{
         <button class="resume-btn resume-btn-main" id="btn-resume">▶ Reprendre</button>
         <button class="resume-btn resume-btn-sec"  id="btn-restart">↺ Recommencer</button>
       </div>
+    </div>
+  </div>
+
+  <!-- UPDATE TOAST -->
+  <div id="update-toast" hidden>
+    <div class="t-icon">⬆</div>
+    <div class="t-text">
+      <div class="t-title" id="toast-title">Mise a jour disponible</div>
+      <div class="t-sub"  id="toast-sub">Nouvelle version disponible</div>
+    </div>
+    <div class="t-btns">
+      <button class="t-btn t-btn-ok"    id="toast-btn-ok">Installer</button>
+      <button class="t-btn t-btn-later" id="toast-btn-later">Plus tard</button>
     </div>
   </div>
 
@@ -1442,34 +1479,90 @@ $('nav-settings').addEventListener('click',()=>gotoSection('settings'));
 $('nav-logo').addEventListener('click',()=>gotoSection('home'));
 $('voice-cancel').addEventListener('click',closeVoice);
 
-// Update callback
+// ══════ UPDATE SYSTEM ════════════════════════════════════════════════════
+let _updateUrl='';
+let _toastZone=false;
+
+function showUpdateToast(tagName,downloadUrl){
+  _updateUrl=downloadUrl;
+  $('toast-title').textContent='Mise a jour '+tagName+' disponible !';
+  $('toast-sub').textContent='Appuyez sur Installer pour telecharger et mettre a jour';
+  $('update-toast').hidden=false;
+  _toastZone=true;
+  // Focus on OK button
+  qAll('.t-btn').forEach(b=>b.classList.remove('foc'));
+  $('toast-btn-ok').classList.add('foc');
+}
+function hideUpdateToast(){
+  $('update-toast').hidden=true;
+  _toastZone=false;
+}
+
+// Toast button clicks
+$('toast-btn-ok').addEventListener('click',()=>{
+  if(_updateUrl)window.AndroidBridge?.downloadAndInstall?.(_updateUrl);
+  hideUpdateToast();
+});
+$('toast-btn-later').addEventListener('click',hideUpdateToast);
+
+// Intercept tv_enter for toast when active
+const _origOnKey=onKey;
+function onKey(type){
+  if(_toastZone){
+    const focused=document.querySelector('.t-btn.foc');
+    if(type==='L'||type==='R'){
+      const btns=qAll('.t-btn');
+      btns.forEach(b=>b.classList.remove('foc'));
+      if(type==='L')$('toast-btn-ok').classList.add('foc');
+      else $('toast-btn-later').classList.add('foc');
+    }
+    else if(type==='E'){
+      if(focused?.id==='toast-btn-ok'&&_updateUrl){
+        window.AndroidBridge?.downloadAndInstall?.(_updateUrl);
+        hideUpdateToast();
+      }else hideUpdateToast();
+    }
+    else if(type==='B'){hideUpdateToast();}
+    return;
+  }
+  _origOnKey(type);
+}
+
 window._onUpdateResult=function(data){
   if(!data)return;
-  const items=qAll('.set-item');
-  items.forEach(el=>{
+  // Update settings page if open
+  qAll('.set-item').forEach(el=>{
     if(el.dataset.action==='update'){
       const d=el.querySelector('.set-desc');
       if(data.upToDate)d.textContent='Application a jour (v'+data.currentVersion+')';
-      else d.textContent='Nouvelle version v'+data.tagName+' disponible - OK pour installer';
+      else d.textContent='v'+data.tagName+' disponible — OK pour installer';
     }
   });
+  // Show toast notification if update available
   if(!data.upToDate&&data.downloadUrl){
-    document.addEventListener('tv_enter',function handler(){
-      const focused=document.querySelector('.set-item.foc');
-      if(focused?.dataset.action==='update'){
-        window.AndroidBridge?.downloadAndInstall?.(data.downloadUrl);
-        document.removeEventListener('tv_enter',handler);
-      }
-    });
+    showUpdateToast(data.tagName,data.downloadUrl);
   }
 };
+
 window._onDownloadProgress=function(pct){
-  const el=document.querySelector('.set-item[data-action="update"] .set-desc');
-  if(el)el.textContent='Telechargement... '+pct+'%';
+  $('toast-title').textContent='Telechargement... '+pct+'%';
+  qAll('.set-item').forEach(el=>{
+    if(el.dataset.action==='update'){
+      const d=el.querySelector('.set-desc');
+      if(d)d.textContent='Telechargement... '+pct+'%';
+    }
+  });
 };
 
 // ══════ INIT ═════════════════════════════════════════════════════════════
 loadContent();
+
+// Auto-check update 12s apres demarrage (evite de perturber le chargement initial)
+setTimeout(()=>{
+  if(window.AndroidBridge?.checkUpdateAsync){
+    try{AndroidBridge.checkUpdateAsync();}catch{}
+  }
+},12000);
 </script>
 </body>
 </html>
