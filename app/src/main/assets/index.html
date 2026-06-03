@@ -44,22 +44,11 @@ html,body{
   transition:background 1.8s ease;
 }
 .blob{position:fixed;border-radius:50%;pointer-events:none;z-index:0}
+/* Blobs statiques (animations supprimees pour fluidite) */
 .b1{width:900px;height:700px;left:-200px;top:-200px;
-    background:radial-gradient(ellipse,rgba(66,133,244,.12) 0%,transparent 65%);
-    animation:blobFloat1 22s ease-in-out infinite}
+    background:radial-gradient(ellipse,rgba(66,133,244,.10) 0%,transparent 65%);}
 .b2{width:700px;height:600px;right:-150px;bottom:-150px;
-    background:radial-gradient(ellipse,rgba(140,80,240,.10) 0%,transparent 65%);
-    animation:blobFloat2 28s ease-in-out infinite}
-@keyframes blobFloat1{
-  0%,100%{transform:translate(0,0) scale(1)}
-  33%{transform:translate(40px,-25px) scale(1.06)}
-  66%{transform:translate(-20px,30px) scale(.95)}
-}
-@keyframes blobFloat2{
-  0%,100%{transform:translate(0,0) scale(1)}
-  40%{transform:translate(-30px,20px) scale(1.08)}
-  70%{transform:translate(25px,-15px) scale(.97)}
-}
+    background:radial-gradient(ellipse,rgba(140,80,240,.08) 0%,transparent 65%);}
 
 /* ─── APP SHELL ──────────────────────────────────────────────────────── */
 #app{position:relative;width:1920px;height:1080px;overflow:hidden;z-index:1}
@@ -104,7 +93,7 @@ html,body{
   background:rgba(79,142,247,.18);border:1px solid rgba(79,142,247,.35);
   color:var(--accent2);font-size:17px;font-weight:600;
   cursor:pointer;pointer-events:auto;
-  animation:voicePulse 3s ease-in-out infinite;
+  /* voicePulse supprime pour fluidite */
 }
 @keyframes voicePulse{
   0%,100%{box-shadow:0 0 0 0 rgba(79,142,247,0)}
@@ -223,13 +212,7 @@ html,body{
   box-shadow:0 0 0 2px var(--accent),0 18px 50px rgba(var(--hc),.4),0 8px 20px rgba(0,0,0,.8);
   z-index:5;border-color:rgba(79,142,247,.4);
 }
-.card.foc::after{
-  content:'';position:absolute;inset:0;border-radius:inherit;overflow:hidden;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);
-  transform:translateX(-100%);
-  animation:shimmer 2s ease-in-out infinite;
-}
-@keyframes shimmer{to{transform:translateX(200%)}}
+/* shimmer supprime pour fluidite sur TV */
 .card-iw{position:relative}
 .card img{width:100%;height:var(--ch);object-fit:cover;display:block}
 .card.live img{height:74px;object-fit:contain;padding:6px;background:#0e0e1a}
@@ -732,13 +715,32 @@ function inferQuality(src){
 }
 
 // ══════ NETWORK ══════════════════════════════════════════════════════════
+// Callbacks pour fetchJsonAsync
+const _fetchCbs={};
+window._fetchCb=function(id,data){ if(_fetchCbs[id]){_fetchCbs[id](data);delete _fetchCbs[id];} };
+
+// Fetch ASYNCHRONE non-bloquant (3 fetches en parallele = ~1-3s au lieu de 30s)
+function bridgeFetchAsync(url){
+  return new Promise(resolve=>{
+    if(window.AndroidBridge?.fetchJsonAsync){
+      const id='f'+Date.now()+Math.random().toString(36).slice(2);
+      _fetchCbs[id]=resolve;
+      try{AndroidBridge.fetchJsonAsync(url,id);return;}catch{delete _fetchCbs[id];}
+    }
+    // Fallback fetch() avec timeout 8s
+    const ctrl=new AbortController();
+    const t=setTimeout(()=>ctrl.abort(),8000);
+    fetch(url,{signal:ctrl.signal})
+      .then(r=>r.ok?r.json():null)
+      .catch(()=>null)
+      .then(d=>{clearTimeout(t);resolve(d);});
+  });
+}
+// Legacy sync fallback (conserve pour episodes API)
 async function bridgeFetch(url){
   if(window.AndroidBridge?.fetchJson){
     try{const r=AndroidBridge.fetchJson(url);if(r)return JSON.parse(r);}catch{}
   }
-  try{const r=await fetch(url);return r.ok?r.json():null;}catch{return null;}
-}
-async function loadJSON(url){
   try{const r=await fetch(url);return r.ok?r.json():null;}catch{return null;}
 }
 
@@ -816,11 +818,12 @@ function setHeroAmbient(r,g,b){
 async function loadContent(){
   $('loading').hidden=false;
   try{
-    // Sequential (AndroidBridge.fetchJson est synchrone — bloque JS thread)
-    // Chaque appel a 10s de timeout cote Java
-    const vodJson    = await bridgeFetch(GH+'vod.json');
-    const seriesJson = await bridgeFetch(GH+'series.json');
-    const liveJson   = await bridgeFetch(GH+'live.json');
+    // PARALLELE non-bloquant — 3 threads Java simultanes, UI reste fluide
+    const [vodJson,seriesJson,liveJson]=await Promise.all([
+      bridgeFetchAsync(GH+'vod.json'),
+      bridgeFetchAsync(GH+'series.json'),
+      bridgeFetchAsync(GH+'live.json'),
+    ]);
     const seen=new Set(),byCat={},allVod=[],allSeries=[];
     function addItem(raw,isSerie){
       const item=normalise(raw,isSerie);if(!item)return;
@@ -860,7 +863,7 @@ async function loadContent(){
       .filter(([cat])=>!ADULT_RE.test(cat)&&!LATEST_RE.test(cat))
       .sort((a,b)=>b[1].length-a[1].length)
       .filter(([,v])=>v.length>=3).slice(0,18)
-      .forEach(([cat,items])=>rows.push({title:cat,items:items.filter(isClean).slice(0,40)}));
+      .forEach(([cat,items])=>rows.push({title:cat,items:items.filter(isClean).slice(0,20)}));
     if(S.liveItems.length)rows.push({title:'TV en Direct',items:S.liveItems.slice(0,30),isLive:true});
     S.rows=rows;
 
@@ -1653,17 +1656,23 @@ $('toast-btn-later').addEventListener('click',hideUpdateToast);
 
 window._onUpdateResult=function(data){
   if(!data)return;
-  // Update settings page if open
+  // Mise a jour settings
   qAll('.set-item').forEach(el=>{
     if(el.dataset.action==='update'){
       const d=el.querySelector('.set-desc');
       if(data.upToDate)d.textContent='Application a jour (v'+data.currentVersion+')';
-      else d.textContent='v'+data.tagName+' disponible — OK pour installer';
+      else d.textContent='v'+data.tagName+' - telechargement en cours...';
     }
   });
-  // Show toast notification if update available
   if(!data.upToDate&&data.downloadUrl){
-    showUpdateToast(data.tagName,data.downloadUrl);
+    // AUTO: lance le telechargement + installation directement, sans demander
+    _updateUrl=data.downloadUrl;
+    $('toast-title').textContent='Mise a jour '+data.tagName+' — installation automatique';
+    $('toast-sub').textContent='Telechargement en cours...';
+    $('update-toast').hidden=false;
+    if(window.AndroidBridge?.downloadAndInstall){
+      try{AndroidBridge.downloadAndInstall(data.downloadUrl);}catch{}
+    }
   }
 };
 
@@ -1683,12 +1692,12 @@ setTimeout(()=>{$('loading').hidden=true;},25000);
 
 loadContent();
 
-// Auto-check update 12s apres demarrage (evite de perturber le chargement initial)
+// Auto-update: verif immediate + telecharge+installe tout seul
 setTimeout(()=>{
   if(window.AndroidBridge?.checkUpdateAsync){
     try{AndroidBridge.checkUpdateAsync();}catch{}
   }
-},12000);
+},3000); // 3s apres demarrage (laisse le temps au contenu de commencer a charger)
 </script>
 </body>
 </html>

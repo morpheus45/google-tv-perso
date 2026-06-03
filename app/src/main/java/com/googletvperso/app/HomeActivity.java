@@ -306,7 +306,7 @@ public class HomeActivity extends FragmentActivity {
         @JavascriptInterface
         public String getDeviceType() { return "android_tv"; }
 
-        /** Requête HTTP depuis Java (pas de restriction mixed content) */
+        /** Requête HTTP SYNCHRONE (legacy, fallback) */
         @JavascriptInterface
         public String fetchJson(String url) {
             java.net.HttpURLConnection conn = null;
@@ -314,8 +314,8 @@ public class HomeActivity extends FragmentActivity {
                 java.net.URL u = new java.net.URL(url.replace("https://", "http://"));
                 conn = (java.net.HttpURLConnection) u.openConnection();
                 conn.setRequestMethod("GET");
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(8000);
                 conn.setRequestProperty("User-Agent", "GoogleTVPerso/1.0");
                 conn.connect();
                 if (conn.getResponseCode() != 200) return null;
@@ -327,6 +327,33 @@ public class HomeActivity extends FragmentActivity {
             } finally {
                 if (conn != null) conn.disconnect();
             }
+        }
+
+        /** Requête HTTP ASYNCHRONE — non-bloquante, résultat via window._fetchCb(id, data) */
+        @JavascriptInterface
+        public void fetchJsonAsync(final String url, final String cbId) {
+            new Thread(() -> {
+                java.net.HttpURLConnection conn = null;
+                String result = "null";
+                try {
+                    java.net.URL u = new java.net.URL(url.replace("https://", "http://"));
+                    conn = (java.net.HttpURLConnection) u.openConnection();
+                    conn.setConnectTimeout(8000);
+                    conn.setReadTimeout(8000);
+                    conn.setRequestProperty("User-Agent", "GoogleTVPerso/1.0");
+                    conn.connect();
+                    if (conn.getResponseCode() == 200) {
+                        java.util.Scanner sc = new java.util.Scanner(conn.getInputStream(), "UTF-8").useDelimiter("\\A");
+                        if (sc.hasNext()) result = sc.next();
+                    }
+                } catch (Exception ignored) {
+                } finally {
+                    if (conn != null) conn.disconnect();
+                }
+                final String finalResult = result;
+                act.runOnUiThread(() -> act.webView.evaluateJavascript(
+                    "window._fetchCb('" + cbId + "'," + finalResult + ");", null));
+            }).start();
         }
 
         /** Affiche un toast système */
