@@ -1392,6 +1392,9 @@ function gotoSection(s){
     showView('home-view');S.sec='home';
     S.zone='hero';S.hBtn=0;focus();
   }else if(s==='movies'||s==='shows'){
+    // DEBUG VISUEL: fond rouge pour confirmer que gotoSection('movies') s'execute
+    document.documentElement.style.setProperty('--bg','#660000');
+    $('bg').style.background='#440000';
     showView('grid-view');S.sec=s;
     openGrid(s);
   }else if(s==='live'){
