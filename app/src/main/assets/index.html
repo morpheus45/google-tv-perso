@@ -120,11 +120,14 @@ html,body{
 
 /* ─── VIEWS ──────────────────────────────────────────────────────────── */
 #main{position:absolute;inset:0;overflow:hidden}
+/* Toutes les vues cachees par defaut */
 .view{
-  display:flex;flex-direction:column;
+  display:none;flex-direction:column;
   width:100%;height:100%;
   padding-top:calc(var(--nav-top) + var(--nh));
 }
+/* Seule la vue active est visible */
+.view.view-active{display:flex!important}
 
 /* ─── HERO — Google TV style ─────────────────────────────────────────── */
 #hero{
@@ -533,7 +536,7 @@ html,body{
   <div id="main">
 
     <!-- HOME -->
-    <div id="home-view" class="view">
+    <div id="home-view" class="view view-active">
       <div id="hero">
         <div id="hero-backdrop"></div>
         <div id="hero-bg-grad"></div>
@@ -1382,11 +1385,9 @@ function gotoSection(s){
   // navIdx: 0=search, 1=home, 2=movies, 3=shows, 4=live, 5=voice, 6=settings
   const idx=['search','home','movies','shows','live','voice','settings'].indexOf(s);
   if(idx>=0)S.navIdx=idx;
-  // Cacher toutes les vues explicitement (hidden attr + display:none)
-  ['home-view','search-view','grid-view','mylist-view','settings-view'].forEach(id=>{
-    const el=$(id); if(el){el.hidden=true;el.style.display='none';}
-  });
-  function showView(id){const el=$(id);if(el){el.hidden=false;el.style.display='flex';}}
+  // Basculer entre vues via classe CSS (approche la plus fiable)
+  qAll('.view').forEach(v=>v.classList.remove('view-active'));
+  function showView(id){const el=$(id);if(el)el.classList.add('view-active');}
   if(s==='home'){
     showView('home-view');S.sec='home';
     S.zone='hero';S.hBtn=0;focus();
