@@ -977,14 +977,13 @@ function buildContent(allVod,allSeries,liveRaw){
     .forEach(([cat,items])=>rows.push({title:cat,items:items.filter(isClean).slice(0,20)}));
   if(S.liveItems.length)rows.push({title:'TV en Direct',items:S.liveItems.slice(0,30),isLive:true});
   S.rows=rows;
-  if(S.heroPool.length)setHero(S.heroPool[0]);
-  renderRows(rows);
+  // Utiliser renderTabHome qui gere tout (hero + rows)
   clearInterval(S.heroTimer);
+  renderTabHome();
   S.heroTimer=setInterval(()=>{
-    if(S.zone!=='hero')return;
-    setHero(S.heroPool[Math.floor(Math.random()*Math.min(S.heroPool.length,30))]);
+    if(S.zone!=='hero'&&S.zone!=='row')return;
+    if(S.sec==='home'&&S.heroPool.length)setHero(S.heroPool[Math.floor(Math.random()*Math.min(S.heroPool.length,30))]);
   },30000);
-  S.zone='hero';S.hBtn=0;focus();
 }
 
 // ══════ HERO ═════════════════════════════════════════════════════════════
@@ -1375,44 +1374,110 @@ function openItem(item){
   pushHist(item);
 }
 
-// ══════ SECTION NAV ══════════════════════════════════════════════════════
+// ══════ SECTION NAV — Style Google TV : tabs changent les ROWS, pas la vue ══
+// Google TV n'a pas de grid-view — chaque tab = rows differentes dans HOME VIEW
 function gotoSection(s){
   if(s==='voice'){openVoice();return;}
+  if(s==='search'){showOnlyView('search-view');S.sec='search';S.zone='search';S.searchIdx=0;focus();return;}
+  if(s==='settings'){showOnlyView('settings-view');S.sec='settings';renderSettings();S.zone='settings';S.setIdx=0;focus();return;}
+
   qAll('.ni').forEach(el=>el.classList.remove('active'));
   const target=document.querySelector(`.ni[data-s="${s}"]`);
   if(target)target.classList.add('active');
-  // Update navIdx
-  // navIdx: 0=search, 1=home, 2=movies, 3=shows, 4=live, 5=voice, 6=settings
   const idx=['search','home','movies','shows','live','voice','settings'].indexOf(s);
   if(idx>=0)S.navIdx=idx;
-  // Basculer entre vues via classe CSS (approche la plus fiable)
-  qAll('.view').forEach(v=>v.classList.remove('view-active'));
-  function showView(id){const el=$(id);if(el)el.classList.add('view-active');}
+
+  // TOUJOURS utiliser home-view — changer son contenu selon le tab (style Google TV)
+  showOnlyView('home-view');
+  S.sec=s;
+
   if(s==='home'){
-    showView('home-view');S.sec='home';
-    S.zone='hero';S.hBtn=0;focus();
-  }else if(s==='movies'||s==='shows'){
-    // DEBUG VISUEL: fond rouge pour confirmer que gotoSection('movies') s'execute
-    document.documentElement.style.setProperty('--bg','#660000');
-    $('bg').style.background='#440000';
-    showView('grid-view');S.sec=s;
-    openGrid(s);
+    renderTabHome();
+  }else if(s==='movies'){
+    renderTabMovies();
+  }else if(s==='shows'){
+    renderTabShows();
   }else if(s==='live'){
-    showView('grid-view');S.sec='live';
-    $('grid-title').textContent='TV Direct';
-    S.gridAll=S.liveItems;S.gridFilter='';
-    buildFilters();applyGrid();
-    S.zone='grid';S.gridIdx=0;focus();
+    renderTabLive();
   }else if(s==='mylist'){
-    showView('mylist-view');S.sec='mylist';
-    renderMyList();S.zone='row';S.rowIdx=0;S.cardIdx=0;focus();
-  }else if(s==='search'){
-    showView('search-view');S.sec='search';
-    S.zone='search';S.searchIdx=0;focus();
-  }else if(s==='settings'){
-    showView('settings-view');S.sec='settings';
-    renderSettings();S.zone='settings';S.setIdx=0;focus();
+    renderTabMyList();
   }
+}
+
+function showOnlyView(id){
+  qAll('.view').forEach(v=>v.classList.remove('view-active'));
+  const el=$(id);if(el)el.classList.add('view-active');
+}
+
+// ── Rendus par tab ───────────────────────────────────────────────────────
+function renderTabHome(){
+  const rows=[];
+  const hist=getHist().slice(0,15).map(h=>h.item).filter(i=>i&&!i.isLive&&isClean(i));
+  if(hist.length)rows.push({title:'Reprendre la lecture',items:hist});
+  const favs=getFavs().slice(0,20).map(f=>f.item).filter(i=>i&&isClean(i));
+  if(favs.length)rows.push({title:'Ma liste',items:favs});
+  const newFilms=[...S.allVod].filter(i=>isClean(i)&&i.image).sort((a,b)=>Number(b.added||0)-Number(a.added||0)).slice(0,20);
+  if(newFilms.length)rows.push({title:'Nouveaux films',items:newFilms});
+  const newSeries=[...S.allSeries].filter(i=>isClean(i)&&i.image).sort((a,b)=>Number(b.added||0)-Number(a.added||0)).slice(0,20);
+  if(newSeries.length)rows.push({title:'Nouvelles series',items:newSeries});
+  if(S.heroPool.length)rows.push({title:'Recommande pour vous',items:S.heroPool.slice(0,25)});
+  // Categories mixtes
+  const byCat={};
+  S.allItems.forEach(i=>{const c=i.category||'Autre';(byCat[c]=byCat[c]||[]).push(i);});
+  Object.entries(byCat).filter(([c])=>!ADULT_RE.test(c)&&!LATEST_RE.test(c)).sort((a,b)=>b[1].length-a[1].length).filter(([,v])=>v.length>=4).slice(0,12).forEach(([cat,items])=>rows.push({title:cat,items:items.filter(isClean).slice(0,20)}));
+  if(S.liveItems.length)rows.push({title:'TV Direct',items:S.liveItems.slice(0,25),isLive:true});
+  S.rows=rows;
+  if(S.heroPool.length)setHero(S.heroPool[Math.floor(Math.random()*Math.min(S.heroPool.length,30))]);
+  renderRows(rows);S.zone='hero';S.hBtn=0;focus();
+}
+
+function renderTabMovies(){
+  // Films par categories — style Google TV Films tab
+  const rows=[];
+  const newFilms=[...S.allVod].filter(i=>isClean(i)&&i.image).sort((a,b)=>Number(b.added||0)-Number(a.added||0)).slice(0,25);
+  if(newFilms.length)rows.push({title:'Nouveaux films',items:newFilms});
+  const byCat={};
+  S.allVod.filter(isClean).forEach(i=>{const c=i.category||'Autre';(byCat[c]=byCat[c]||[]).push(i);});
+  Object.entries(byCat).filter(([c])=>!ADULT_RE.test(c)&&!LATEST_RE.test(c)).sort((a,b)=>b[1].length-a[1].length).filter(([,v])=>v.length>=3).slice(0,16).forEach(([cat,items])=>rows.push({title:cat,items:items.slice(0,25)}));
+  S.rows=rows;
+  if(S.allVod.length){const pool=S.allVod.filter(i=>isClean(i)&&i.image);setHero(pool[Math.floor(Math.random()*Math.min(pool.length,30))]);}
+  renderRows(rows);S.zone='row';S.rowIdx=0;S.cardIdx=0;focus();
+}
+
+function renderTabShows(){
+  const rows=[];
+  const newSeries=[...S.allSeries].filter(i=>isClean(i)&&i.image).sort((a,b)=>Number(b.added||0)-Number(a.added||0)).slice(0,25);
+  if(newSeries.length)rows.push({title:'Nouvelles series',items:newSeries});
+  const byCat={};
+  S.allSeries.filter(isClean).forEach(i=>{const c=i.category||'Autre';(byCat[c]=byCat[c]||[]).push(i);});
+  Object.entries(byCat).filter(([c])=>!ADULT_RE.test(c)&&!LATEST_RE.test(c)).sort((a,b)=>b[1].length-a[1].length).filter(([,v])=>v.length>=3).slice(0,16).forEach(([cat,items])=>rows.push({title:cat,items:items.slice(0,25)}));
+  S.rows=rows;
+  if(S.allSeries.length){const pool=S.allSeries.filter(i=>isClean(i)&&i.image);setHero(pool[Math.floor(Math.random()*Math.min(pool.length,30))]);}
+  renderRows(rows);S.zone='row';S.rowIdx=0;S.cardIdx=0;focus();
+}
+
+function renderTabLive(){
+  const rows=[];
+  const byLiveCat={};
+  S.liveItems.forEach(i=>{const c=i.category||'Live TV';(byLiveCat[c]=byLiveCat[c]||[]).push(i);});
+  const cats=Object.entries(byLiveCat).sort((a,b)=>b[1].length-a[1].length);
+  if(cats.length===0)rows.push({title:'TV Direct',items:S.liveItems.slice(0,40),isLive:true});
+  else cats.slice(0,20).forEach(([cat,items])=>rows.push({title:cat,items:items.slice(0,30),isLive:true}));
+  S.rows=rows;
+  // Hero = premiere chaine dispo
+  if(S.liveItems.length)setHero({...S.liveItems[0],plot:'Regardez vos chaines en direct'});
+  renderRows(rows);S.zone='row';S.rowIdx=0;S.cardIdx=0;focus();
+}
+
+function renderTabMyList(){
+  const rows=[];
+  const hist=getHist().slice(0,20).map(h=>h.item).filter(i=>i&&isClean(i));
+  if(hist.length)rows.push({title:'Reprendre la lecture',items:hist});
+  const favs=getFavs().slice(0,40).map(f=>f.item).filter(i=>i&&isClean(i));
+  if(favs.length)rows.push({title:'Ma liste',items:favs});
+  if(!rows.length){$('content').innerHTML='<div style="padding:60px var(--safe);font-size:20px;color:var(--dim)">Rien ici — ajoutez des films avec ♡</div>';S.rows=[];return;}
+  S.rows=rows;
+  renderRows(rows);S.zone='row';S.rowIdx=0;S.cardIdx=0;focus();
 }
 
 // ══════ MA LISTE (Google TV: Bibliothèque) ════════════════════════════════
@@ -1646,7 +1711,7 @@ function onKey(type){
       if(s==='home'){S.zone='hero';S.hBtn=0;focus();}
       else{gotoSection(s);}
     }
-    else if(type==='B'){S.zone=S.sec==='home'?'hero':'grid';focus();}
+    else if(type==='B'){S.zone='hero';focus();}
     return;
   }
 
