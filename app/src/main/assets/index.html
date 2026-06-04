@@ -63,60 +63,74 @@ html,body{
 /* ─── APP SHELL ──────────────────────────────────────────────────────── */
 #app{position:relative;width:1920px;height:1080px;overflow:hidden;z-index:1}
 
-/* ─── NAV ────────────────────────────────────────────────────────────── */
+/* ─── NAV — Google TV 2025 style ────────────────────────────────────── */
 #topnav{
   position:absolute;top:var(--nav-top);left:0;right:0;
   height:var(--nh);z-index:20;pointer-events:none;
 }
+
+/* Logo Google TV (gauche) */
 .nav-logo{
   position:absolute;left:var(--safe);top:50%;transform:translateY(-50%);
-  width:38px;height:38px;border-radius:50%;
-  background:rgba(10,18,40,.92);border:1px solid rgba(255,255,255,.14);
+  width:44px;height:44px;border-radius:50%;
+  background:rgba(10,18,40,.85);border:1px solid rgba(255,255,255,.15);
   display:flex;align-items:center;justify-content:center;
   pointer-events:auto;cursor:pointer;
 }
-.nav-logo svg{width:22px;height:22px}
+.nav-logo svg{width:24px;height:24px}
+
+/* Pill centre — identique Google TV */
 #nav-items{
   position:absolute;left:50%;top:50%;
   transform:translate(-50%,-50%);
-  display:flex;align-items:center;gap:2px;
-  background:rgba(10,18,40,.92);
-  border-radius:50px;padding:5px 7px;
-  border:1px solid rgba(255,255,255,.12);
+  display:flex;align-items:center;gap:0;
+  background:rgba(8,12,30,.88);
+  border-radius:50px;padding:6px 8px;
+  border:1px solid rgba(255,255,255,.10);
+  box-shadow:0 2px 20px rgba(0,0,0,.4);
   pointer-events:auto;white-space:nowrap;
 }
 .ni{
-  display:inline-flex;align-items:center;gap:5px;
-  padding:9px 26px;border-radius:40px;
-  font-size:17px;font-weight:500;color:rgba(255,255,255,.55);
-  cursor:pointer;white-space:nowrap;transition:background .1s,color .1s;
+  display:inline-flex;align-items:center;gap:6px;
+  padding:9px 28px;border-radius:40px;
+  font-size:17px;font-weight:500;color:rgba(255,255,255,.52);
+  cursor:pointer;white-space:nowrap;
+  transition:background .15s,color .15s;
 }
-.ni.active{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
-.ni.foc{background:rgba(255,255,255,.35)!important;color:#fff!important;font-weight:700;box-shadow:0 0 0 2px #fff}
+.ni.active{
+  background:rgba(255,255,255,.18);color:#fff;font-weight:700;
+}
+.ni.foc{
+  background:rgba(255,255,255,.30)!important;color:#fff!important;
+  font-weight:700;outline:2px solid rgba(255,255,255,.6);outline-offset:1px;
+}
+
+/* Droite: icones recherche + voix + parametres */
 #nav-right{
   position:absolute;right:var(--safe);top:50%;transform:translateY(-50%);
-  display:flex;align-items:center;gap:10px;pointer-events:auto;
+  display:flex;align-items:center;gap:8px;pointer-events:auto;
 }
-#nav-voice{
-  display:flex;align-items:center;gap:6px;
-  padding:9px 20px;border-radius:40px;
-  background:rgba(79,142,247,.18);border:1px solid rgba(79,142,247,.35);
-  color:var(--accent2);font-size:17px;font-weight:600;
-  cursor:pointer;pointer-events:auto;
-  /* voicePulse supprime pour fluidite */
+.nav-icon-pill{
+  display:flex;align-items:center;gap:4px;
+  padding:8px 14px;border-radius:40px;
+  background:rgba(8,12,30,.88);border:1px solid rgba(255,255,255,.10);
+  box-shadow:0 2px 20px rgba(0,0,0,.4);
 }
-@keyframes voicePulse{
-  0%,100%{box-shadow:0 0 0 0 rgba(79,142,247,0)}
-  50%{box-shadow:0 0 0 4px rgba(79,142,247,.22)}
-}
-#nav-voice.foc{background:rgba(79,142,247,.38);color:#fff;animation:none;box-shadow:0 0 0 2px var(--accent)}
 .nav-icon{
-  width:38px;height:38px;border-radius:50%;
+  width:36px;height:36px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  background:rgba(10,18,40,.92);border:1px solid rgba(255,255,255,.12);
-  color:rgba(255,255,255,.7);font-size:16px;cursor:pointer;
+  color:rgba(255,255,255,.72);font-size:18px;cursor:pointer;
+  transition:color .1s;
 }
-.nav-icon.foc{background:rgba(255,255,255,.9);color:#111}
+.nav-icon:hover,.nav-icon.foc{color:#fff}
+#nav-voice{
+  display:flex;align-items:center;justify-content:center;
+  width:36px;height:36px;border-radius:50%;
+  color:var(--accent2);font-size:20px;cursor:pointer;pointer-events:auto;
+}
+#nav-voice.foc{color:#fff;background:rgba(79,142,247,.35);border-radius:50%}
+#nav-settings{color:rgba(255,255,255,.72);font-size:18px}
+#nav-settings.foc{color:#fff}
 
 /* ─── VIEWS ──────────────────────────────────────────────────────────── */
 #main{position:absolute;inset:0;overflow:hidden}
@@ -499,24 +513,35 @@ html,body{
 
 <div id="app">
 
-  <!-- NAV -->
+  <!-- NAV — Google TV 2025 -->
   <nav id="topnav">
+    <!-- Logo gauche -->
     <div class="nav-logo" id="nav-logo">
       <svg viewBox="0 0 28 28" fill="none">
         <rect x="2" y="5" width="24" height="17" rx="3" fill="#4f8ef7"/>
         <path d="M8 13l3.5 3L20 10" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
+
+    <!-- Tabs centrés — style Google TV -->
     <div id="nav-items">
-      <div class="ni active" data-s="home">Accueil</div>
+      <div class="ni active" data-s="home">Pour vous</div>
       <div class="ni" data-s="movies">Films</div>
       <div class="ni" data-s="shows">Séries</div>
-      <div class="ni" data-s="live">TV Direct</div>
+      <div class="ni" data-s="live">En direct</div>
+      <div class="ni" data-s="mylist">Ma liste</div>
     </div>
+
+    <!-- Droite: pill avec icones (style Google TV) -->
     <div id="nav-right">
-      <div id="nav-voice">🎙 VOIX</div>
-      <div class="nav-icon" id="nav-settings">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <div class="nav-icon-pill">
+        <div id="nav-voice" class="nav-icon">🎙</div>
+        <div class="nav-icon" id="nav-search-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/></svg>
+        </div>
+        <div class="nav-icon" id="nav-settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
       </div>
     </div>
   </nav>
@@ -566,6 +591,11 @@ html,body{
         <div id="filter-bar"></div>
       </div>
       <div id="grid-wrap"></div>
+    </div>
+
+    <!-- MA LISTE (Google TV: Bibliothèque) -->
+    <div id="mylist-view" class="view" hidden>
+      <div id="mylist-content"></div>
     </div>
 
     <!-- SETTINGS -->
@@ -667,8 +697,8 @@ const ADULT_RE  = /adult|xxx|porn|x{2,}|hentai|erotic/i;
 const LATEST_RE = /latest|nouveau/i;
 const BLANK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='132' height='185'%3E%3Crect fill='%230e0e1a' width='132' height='185'/%3E%3Ctext x='66' y='93' fill='%23222' font-size='36' text-anchor='middle' dy='.35em'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E";
 const STORE = {prog:'pf_progress_v4',hist:'pf_history_v4',favs:'pf_favorites_v4'};
-// nav: 0=home,1=movies,2=shows,3=live,4=voice,5=settings
-const NAV_SECS = ['home','movies','shows','live','voice','settings'];
+// nav: 0=home,1=movies,2=shows,3=live,4=mylist | droite: 5=voice,6=search,7=settings
+const NAV_SECS = ['home','movies','shows','live','mylist','voice','search','settings'];
 
 // ══════ STATE ════════════════════════════════════════════════════════════
 const S = {
@@ -1366,7 +1396,7 @@ function gotoSection(s){
   const target=document.querySelector(`.ni[data-s="${s}"]`);
   if(target)target.classList.add('active');
   // Update navIdx
-  const idx=['home','movies','shows','live'].indexOf(s);
+  const idx=['home','movies','shows','live','mylist'].indexOf(s);
   if(idx>=0)S.navIdx=idx;
   // Show view
   qAll('.view').forEach(v=>v.hidden=true);
@@ -1378,10 +1408,13 @@ function gotoSection(s){
     openGrid(s);
   }else if(s==='live'){
     $('grid-view').hidden=false;S.sec='live';
-    $('grid-title').textContent='TV Direct';
+    $('grid-title').textContent='En direct';
     S.gridAll=S.liveItems;S.gridFilter='';
     buildFilters();applyGrid();
     S.zone='grid';S.gridIdx=0;focus();
+  }else if(s==='mylist'){
+    $('mylist-view').hidden=false;S.sec='mylist';
+    renderMyList();S.zone='row';S.rowIdx=0;S.cardIdx=0;focus();
   }else if(s==='search'){
     $('search-view').hidden=false;S.sec='search';
     S.zone='search';S.searchIdx=0;focus();
@@ -1389,6 +1422,31 @@ function gotoSection(s){
     $('settings-view').hidden=false;S.sec='settings';
     renderSettings();S.zone='settings';S.setIdx=0;focus();
   }
+}
+
+// ══════ MA LISTE (Google TV: Bibliothèque) ════════════════════════════════
+function renderMyList(){
+  const c=$('mylist-content');c.innerHTML='';
+  const rows=[];
+  const hist=getHist().slice(0,20).map(h=>h.item).filter(i=>i&&isClean(i));
+  if(hist.length)rows.push({title:'Reprendre la lecture',items:hist});
+  const favs=getFavs().slice(0,40).map(f=>f.item).filter(i=>i&&isClean(i));
+  if(favs.length)rows.push({title:'Ma liste',items:favs});
+  if(!rows.length){
+    c.innerHTML='<div style="padding:60px var(--safe);font-size:18px;color:var(--dim)">Rien ici pour l instant — ajoutez des films a votre liste avec ♡</div>';
+    return;
+  }
+  // Utiliser les rows globales S.rows patchees avec mylist rows
+  S.rows=rows;
+  rows.forEach((row,ri)=>{
+    const rowEl=document.createElement('div');
+    rowEl.className='row';rowEl.dataset.ri=ri;
+    rowEl.innerHTML=`<div class="row-title"><span class="row-title-accent"></span>${esc(row.title)}</div>`;
+    const items=document.createElement('div');
+    items.className='row-items';items.id='ri'+ri;
+    row.items.forEach((item,ci)=>items.appendChild(mkCard(item,ri,ci,item.isLive)));
+    rowEl.appendChild(items);c.appendChild(rowEl);
+  });
 }
 
 // ══════ SETTINGS ════════════════════════════════════════════════════════
@@ -1434,15 +1492,15 @@ function activateSetting(idx){
 function focus(){
   // Clear all focus
   qAll('.ni,.nav-icon,.fpill,.card,.btn-hero,.panel-act-btn,.panel-tab,.pep,.resume-btn,.set-item').forEach(el=>el.classList.remove('foc'));
-  $('nav-voice').classList.remove('foc');
-  $('nav-settings').classList.remove('foc');
+  ['nav-voice','nav-settings','nav-search-btn'].forEach(id=>{const el=$(id);if(el)el.classList.remove('foc');});
 
   const z=S.zone;
   if(z==='nav'){
     const navMain=qAll('#nav-items .ni');
-    if(S.navIdx<=3&&navMain[S.navIdx])navMain[S.navIdx].classList.add('foc');
-    else if(S.navIdx===4)$('nav-voice').classList.add('foc');
-    else if(S.navIdx===5)$('nav-settings').classList.add('foc');
+    if(S.navIdx<=4&&navMain[S.navIdx])navMain[S.navIdx].classList.add('foc');
+    else if(S.navIdx===5)$('nav-voice').classList.add('foc');
+    else if(S.navIdx===6)$('nav-search-btn').classList.add('foc');
+    else if(S.navIdx===7)$('nav-settings').classList.add('foc');
   }
   else if(z==='hero'){
     const btns=qAll('#hero-acts .btn-hero');
@@ -1584,21 +1642,25 @@ function onKey(type){
 
   if(z==='nav'){
     if(type==='L'){S.navIdx=Math.max(0,S.navIdx-1);focus();}
-    else if(type==='R'){S.navIdx=Math.min(5,S.navIdx+1);focus();}
+    else if(type==='R'){S.navIdx=Math.min(7,S.navIdx+1);focus();}
     else if(type==='D'){
-      if(S.navIdx===4){openVoice();return;}
-      if(S.navIdx===5){gotoSection('settings');return;}
       const s=NAV_SECS[S.navIdx];
+      if(s==='voice'){openVoice();return;}
+      if(s==='search'){gotoSection('search');return;}
+      if(s==='settings'){gotoSection('settings');return;}
       if(s==='home'){S.zone='hero';S.hBtn=0;focus();}
-      else if(s==='movies'||s==='shows'){openGrid(s);}
-      else if(s==='live'){gotoSection('live');}
-      else if(s==='search'){gotoSection('search');}
+      else{gotoSection(s);}
     }
     else if(type==='E'){
       const s=NAV_SECS[S.navIdx];
-      if(s==='voice'){openVoice();}else{gotoSection(s);}
+      if(s==='voice'){openVoice();}
+      else if(s==='search'){gotoSection('search');}
+      else{gotoSection(s);}
     }
-    else if(type==='B'){S.zone=S.sec==='home'?'hero':'grid';focus();}
+    else if(type==='B'){
+      const prev=S.sec==='home'?'hero':S.sec==='mylist'?'row':'grid';
+      S.zone=prev;focus();
+    }
     return;
   }
 
@@ -1745,6 +1807,7 @@ document.querySelectorAll('#nav-items .ni').forEach((el,i)=>{
   el.addEventListener('click',()=>{gotoSection(el.dataset.s);});
 });
 $('nav-voice').addEventListener('click',openVoice);
+$('nav-search-btn').addEventListener('click',()=>gotoSection('search'));
 $('nav-settings').addEventListener('click',()=>gotoSection('settings'));
 $('nav-logo').addEventListener('click',()=>gotoSection('home'));
 $('voice-cancel').addEventListener('click',closeVoice);
