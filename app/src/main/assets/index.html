@@ -1081,7 +1081,7 @@ function mkCard(item,ri,ci,isLive){
 function openGrid(type){
   $('grid-title').textContent=type==='movies'?'Films':'Séries';
   S.gridAll=(type==='movies'?S.allVod:S.allSeries).filter(isClean);
-  S.gridFilter='';S.gridQuality='';S.gridFavOnly=false;S.gridSort='title';
+  S.gridFilter='';S.gridQuality='';S.gridFavOnly=false;S.gridSort='recent';
   buildFilters();applyGrid();
   S.zone='filter';S.filterIdx=0;S.gridIdx=0;focus();
 }
@@ -1382,28 +1382,31 @@ function gotoSection(s){
   // navIdx: 0=search, 1=home, 2=movies, 3=shows, 4=live, 5=voice, 6=settings
   const idx=['search','home','movies','shows','live','voice','settings'].indexOf(s);
   if(idx>=0)S.navIdx=idx;
-  // Show view
-  qAll('.view').forEach(v=>v.hidden=true);
+  // Cacher toutes les vues explicitement (hidden attr + display:none)
+  ['home-view','search-view','grid-view','mylist-view','settings-view'].forEach(id=>{
+    const el=$(id); if(el){el.hidden=true;el.style.display='none';}
+  });
+  function showView(id){const el=$(id);if(el){el.hidden=false;el.style.display='flex';}}
   if(s==='home'){
-    $('home-view').hidden=false;S.sec='home';
+    showView('home-view');S.sec='home';
     S.zone='hero';S.hBtn=0;focus();
   }else if(s==='movies'||s==='shows'){
-    $('grid-view').hidden=false;S.sec=s;
+    showView('grid-view');S.sec=s;
     openGrid(s);
   }else if(s==='live'){
-    $('grid-view').hidden=false;S.sec='live';
-    $('grid-title').textContent='En direct';
+    showView('grid-view');S.sec='live';
+    $('grid-title').textContent='TV Direct';
     S.gridAll=S.liveItems;S.gridFilter='';
     buildFilters();applyGrid();
     S.zone='grid';S.gridIdx=0;focus();
   }else if(s==='mylist'){
-    $('mylist-view').hidden=false;S.sec='mylist';
+    showView('mylist-view');S.sec='mylist';
     renderMyList();S.zone='row';S.rowIdx=0;S.cardIdx=0;focus();
   }else if(s==='search'){
-    $('search-view').hidden=false;S.sec='search';
+    showView('search-view');S.sec='search';
     S.zone='search';S.searchIdx=0;focus();
   }else if(s==='settings'){
-    $('settings-view').hidden=false;S.sec='settings';
+    showView('settings-view');S.sec='settings';
     renderSettings();S.zone='settings';S.setIdx=0;focus();
   }
 }
