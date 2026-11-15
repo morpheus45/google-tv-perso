@@ -269,7 +269,8 @@ html,body{
 /* ─── SETTINGS ───────────────────────────────────────────────────────── */
 #settings-view{overflow:hidden}
 .set-title{font-size:24px;font-weight:800;margin-bottom:24px;padding:20px var(--safe) 0}
-.set-list{padding:0 var(--safe);overflow-y:auto;flex:1}
+.set-list{padding:0 var(--safe) 60px;overflow-y:auto;flex:1;scrollbar-width:none}
+.set-list::-webkit-scrollbar{display:none}
 .set-item{
   padding:15px 22px;margin-bottom:10px;min-width:460px;
   border-radius:14px;background:rgba(255,255,255,.06);
@@ -1467,7 +1468,9 @@ function focus(){
   }
   else if(z==='settings'){
     const items=qAll('.set-item');
-    if(items[S.setIdx])items[S.setIdx].classList.add('foc');
+    // scrollIntoView manquait : la liste depasse l'ecran, les derniers reglages
+    // recevaient le focus hors champ (« je ne vois pas le bas de la page »).
+    if(items[S.setIdx]){items[S.setIdx].classList.add('foc');items[S.setIdx].scrollIntoView({block:'nearest',behavior:'smooth'});}
   }
   else if(z==='search'){
     const cards=qAll('#search-results .card');
