@@ -60,9 +60,8 @@ public class HomeActivity extends FragmentActivity {
 
         configureWebView();
 
-        if (savedInstanceState != null) {
-            webView.restoreState(savedInstanceState);
-        } else {
+        // restoreState rend null quand il n'a rien pu restaurer : on recharge alors
+        if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
             webView.loadUrl(HOME_URL);
         }
     }
@@ -140,24 +139,9 @@ public class HomeActivity extends FragmentActivity {
             }
         });
 
-        webView.setWebChromeClient(new WebChromeClient() {
-            private View customView;
-
-            @Override
-            public void onShowCustomView(View view, CustomViewCallback cb) {
-                customView = view;
-                webView.setVisibility(View.GONE);
-                setContentView(view);
-            }
-
-            @Override
-            public void onHideCustomView() {
-                setContentView(R.layout.activity_home);
-                webView = findViewById(R.id.webView);
-                webView.setVisibility(View.VISIBLE);
-                customView = null;
-            }
-        });
+        // Pas de gestion du plein écran HTML5 : la lecture passe par VlcPlayerActivity.
+        // (L'ancienne version recréait une WebView vide au retour du plein écran.)
+        webView.setWebChromeClient(new WebChromeClient());
     }
 
     // ── D-PAD : relayer les touches au JS comme CustomEvent ──────────────────
@@ -228,6 +212,16 @@ public class HomeActivity extends FragmentActivity {
                 }
             }
             webView.post(() -> webView.evaluateJavascript("window.onVoiceResult(null);", null));
+        } else if (requestCode == VlcPlayerActivity.REQUEST_CODE) {
+            // Retour du lecteur : position atteinte → progression / « Reprendre » côté JS
+            if (resultCode == RESULT_OK && data != null) {
+                String url = data.getStringExtra("url");
+                long pos = data.getLongExtra("pos", 0L);
+                long dur = data.getLongExtra("dur", 0L);
+                final String js = "window.onAndroidPlayerClosed(" + JSONObject.quote(url == null ? "" : url)
+                                + "," + pos + "," + dur + ");";
+                webView.post(() -> webView.evaluateJavascript(js, null));
+            }
         }
     }
 
@@ -287,7 +281,15 @@ public class HomeActivity extends FragmentActivity {
         @JavascriptInterface
         public void openInVlc(String url, String title, boolean isLive) {
             act.runOnUiThread(() ->
-                VlcPlayerActivity.start(act, url, title, isLive)
+                VlcPlayerActivity.start(act, url, title, isLive, 0L)
+            );
+        }
+
+        /** Même chose, en reprenant à startMs (millisecondes) — films et épisodes */
+        @JavascriptInterface
+        public void openInVlcAt(String url, String title, boolean isLive, int startMs) {
+            act.runOnUiThread(() ->
+                VlcPlayerActivity.start(act, url, title, isLive, (long) Math.max(0, startMs))
             );
         }
 
@@ -340,45 +342,6 @@ public class HomeActivity extends FragmentActivity {
             } finally {
                 if (conn != null) conn.disconnect();
             }
-        }
-
-        // Stockage des resultats async (evite de passer de gros JSON via evaluateJavascript)
-        private static final java.util.concurrent.ConcurrentHashMap<String, String> _asyncStore =
-            new java.util.concurrent.ConcurrentHashMap<>();
-
-        /** Requête HTTP ASYNCHRONE — Java fetch en thread, JS recupere via getAsyncResult() */
-        @JavascriptInterface
-        public void fetchJsonAsync(final String url, final String cbId) {
-            new Thread(() -> {
-                java.net.HttpURLConnection conn = null;
-                String result = null;
-                try {
-                    java.net.URL u = new java.net.URL(url.replace("https://", "http://"));
-                    conn = (java.net.HttpURLConnection) u.openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
-                    conn.setRequestProperty("User-Agent", "GoogleTVPerso/1.0");
-                    conn.connect();
-                    if (conn.getResponseCode() == 200) {
-                        java.util.Scanner sc = new java.util.Scanner(conn.getInputStream(), "UTF-8").useDelimiter("\\A");
-                        if (sc.hasNext()) result = sc.next();
-                    }
-                } catch (Exception ignored) {
-                } finally {
-                    if (conn != null) conn.disconnect();
-                }
-                // Stocker en memoire, signaler JS avec juste l'ID (pas de gros JSON)
-                final boolean ok = (result != null);
-                if (ok) _asyncStore.put(cbId, result);
-                act.runOnUiThread(() -> act.webView.evaluateJavascript(
-                    "window._onFetchReady('" + cbId + "'," + ok + ");", null));
-            }).start();
-        }
-
-        /** JS appelle ceci pour recuperer le resultat stocke (sync, instantane) */
-        @JavascriptInterface
-        public String getAsyncResult(final String cbId) {
-            return _asyncStore.remove(cbId); // supprime apres lecture
         }
 
         /** Affiche un toast système */

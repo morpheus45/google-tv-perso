@@ -38,14 +38,30 @@ public class VlcPlayerActivity extends Activity
     public static final String EXTRA_URL     = "url";
     public static final String EXTRA_TITLE   = "title";
     public static final String EXTRA_IS_LIVE = "is_live";
+    public static final String EXTRA_START_MS = "start_ms";
+
+    public static final int REQUEST_CODE = 2001;
 
     public static void start(Context ctx, String url, String title, boolean isLive) {
+        if (ctx instanceof Activity) {
+            start((Activity) ctx, url, title, isLive, 0L);
+            return;
+        }
         Intent i = new Intent(ctx, VlcPlayerActivity.class);
         i.putExtra(EXTRA_URL,     url);
         i.putExtra(EXTRA_TITLE,   title != null ? title : "");
         i.putExtra(EXTRA_IS_LIVE, isLive);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         ctx.startActivity(i);
+    }
+
+    public static void start(Activity act, String url, String title, boolean isLive, long startMs) {
+        Intent i = new Intent(act, VlcPlayerActivity.class);
+        i.putExtra(EXTRA_URL,     url);
+        i.putExtra(EXTRA_TITLE,   title != null ? title : "");
+        i.putExtra(EXTRA_IS_LIVE, isLive);
+        i.putExtra(EXTRA_START_MS, startMs);
+        act.startActivityForResult(i, REQUEST_CODE);
     }
 
     // ── VLC ─────────────────────────────────────────────────────────
@@ -72,6 +88,11 @@ public class VlcPlayerActivity extends Activity
     private boolean controlsShown = true;
     private boolean userSeeking   = false;
     private String  pendingUrl    = null;
+    private long startMs = 0L;
+    private boolean seeked = false;
+    private int retries = 0;
+    private static final int MAX_RETRIES = 3;
+    private String currentUrl;
 
     private final Handler  handler    = new Handler(Looper.getMainLooper());
     private final Object   hideToken  = new Object();
@@ -100,6 +121,7 @@ public class VlcPlayerActivity extends Activity
         String url  = getIntent().getStringExtra(EXTRA_URL);
         String title = getIntent().getStringExtra(EXTRA_TITLE);
         isLive       = getIntent().getBooleanExtra(EXTRA_IS_LIVE, false);
+        startMs      = getIntent().getLongExtra(EXTRA_START_MS, 0);
 
         textureView    = findViewById(R.id.vlc_surface);
         loadingView    = findViewById(R.id.vlc_loading);
@@ -122,7 +144,7 @@ public class VlcPlayerActivity extends Activity
             timeTotal.setVisibility(View.GONE);
         }
 
-        btnBack.setOnClickListener(v -> finish());
+        btnBack.setOnClickListener(v -> reportAndFinish());
         btnPlay.setOnClickListener(v -> togglePlayPause());
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -208,6 +230,11 @@ public class VlcPlayerActivity extends Activity
             switch (event.type) {
                 case MediaPlayer.Event.Playing:
                     runOnUiThread(() -> {
+                        retries = 0;
+                        if (!seeked && startMs > 0 && !isLive) {
+                            mediaPlayer.setTime(startMs);
+                            seeked = true;
+                        }
                         loadingView.setVisibility(View.GONE);
                         errorView.setVisibility(View.GONE);
                         // Masquer le bouton centre (même comportement que le player VOD :
@@ -231,14 +258,14 @@ public class VlcPlayerActivity extends Activity
                         loadingView.setVisibility(buf < 100f ? View.VISIBLE : View.GONE));
                     break;
                 case MediaPlayer.Event.EncounteredError:
-                    runOnUiThread(() -> {
-                        handler.removeCallbacks(progressUpdater);
-                        showError("Erreur de lecture — vérifiez la connexion réseau");
-                    });
+                    runOnUiThread(() -> retryOrError("Erreur de lecture — vérifiez la connexion réseau"));
                     break;
                 case MediaPlayer.Event.EndReached:
                     runOnUiThread(() -> {
                         handler.removeCallbacks(progressUpdater);
+                        // Un direct ne se termine jamais : une « fin » est une coupure
+                        // de flux IPTV → on relance avant d'afficher une erreur.
+                        if (isLive) { retryOrError("Flux interrompu — vérifiez la connexion réseau"); return; }
                         btnPlay.setVisibility(View.VISIBLE);
                         showControls();
                     });
@@ -311,6 +338,7 @@ public class VlcPlayerActivity extends Activity
 
     private void playUrl(String url) {
         if (mediaPlayer == null) return;
+        currentUrl = url;
         try {
             loadingView.setVisibility(View.VISIBLE);
             errorView.setVisibility(View.GONE);
@@ -328,6 +356,37 @@ public class VlcPlayerActivity extends Activity
         } catch (Exception e) {
             showError("Impossible de lire : " + e.getMessage());
         }
+    }
+
+    /** Relance le flux (1,5 s, 3 s, 4,5 s) avant de déclarer l'erreur : les
+     *  premières connexions IPTV échouent souvent une fois puis passent. */
+    private void retryOrError(String msg) {
+        handler.removeCallbacks(progressUpdater);
+        if (retries < MAX_RETRIES && currentUrl != null) {
+            retries++;
+            loadingView.setVisibility(View.VISIBLE);
+            errorView.setVisibility(View.GONE);
+            final String url = currentUrl;
+            handler.postDelayed(() -> {
+                if (mediaPlayer != null && !isFinishing()) playUrl(url);
+            }, 1500L * retries);
+        } else {
+            showError(msg);
+        }
+    }
+
+    /** Renvoie la position atteinte à HomeActivity (reprise de lecture côté JS). */
+    private void reportAndFinish() {
+        long pos = 0L, dur = 0L;
+        if (mediaPlayer != null && !isLive) {
+            try { pos = mediaPlayer.getTime(); dur = mediaPlayer.getLength(); } catch (Exception ignored) {}
+        }
+        Intent data = new Intent();
+        data.putExtra("url", currentUrl != null ? currentUrl : pendingUrl);
+        data.putExtra("pos", Math.max(0L, pos));
+        data.putExtra("dur", Math.max(0L, dur));
+        setResult(RESULT_OK, data);
+        finish();
     }
 
     private final Runnable progressUpdater = new Runnable() {
@@ -455,7 +514,7 @@ public class VlcPlayerActivity extends Activity
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_BACK:
-                finish();
+                reportAndFinish();
                 return true;
 
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
